@@ -13,10 +13,9 @@ public interface IBlockchainGateway
 }
 
 public sealed record AnchorSubmission(
-    string TransactionHash,
-    long ChainId);
-
-public sealed record AnchorVerification(
-    bool Exists,
+    long ChainId,
     string? TransactionHash,
-    long? BlockNumber);
+    long? BlockNumber,
+    bool AlreadyAnchored);
+
+public sealed record AnchorVerification(bool Exists);

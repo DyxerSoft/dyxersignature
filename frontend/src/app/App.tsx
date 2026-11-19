@@ -1,3 +1,5 @@
+import { ContractWorkbench } from "../features/contracts/ContractWorkbench";
+
 const modules = [
   ["Contratos", "Estado lógico y versión oficial vigente"],
   ["Versiones", "Histórico inmutable de documentos firmados"],
@@ -15,7 +17,7 @@ export function App() {
           <h1>DyxerSignature</h1>
           <p>Firma, evidencia y trazabilidad documental.</p>
         </div>
-        <span className="status-pill">Arquitectura inicial</span>
+        <span className="status-pill">MVP técnico</span>
       </header>
 
       <section className="module-grid" aria-label="Módulos principales">
@@ -26,6 +28,8 @@ export function App() {
           </article>
         ))}
       </section>
+
+      <ContractWorkbench />
     </main>
   );
 }

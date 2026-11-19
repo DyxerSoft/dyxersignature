@@ -37,31 +37,61 @@ public sealed class ContractDocumentVersion
         if (Status is DocumentVersionStatus.Active or DocumentVersionStatus.Superseded)
             throw new InvalidOperationException("An immutable version cannot be re-signed.");
 
+        if (string.IsNullOrWhiteSpace(storageKey))
+            throw new ArgumentException("Storage key is required.", nameof(storageKey));
+
+        if (documentHash.Length != 64)
+            throw new ArgumentException("SHA-256 must contain 64 hexadecimal characters.", nameof(documentHash));
+
         StorageKey = storageKey;
-        DocumentHash = documentHash;
+        DocumentHash = documentHash.ToLowerInvariant();
         SignedAtUtc = signedAtUtc;
         Status = DocumentVersionStatus.Signed;
     }
 
-    public void MarkBlockchainPending() => Status = DocumentVersionStatus.BlockchainPending;
-    public void MarkBlockchainSubmitted() => Status = DocumentVersionStatus.BlockchainSubmitted;
-    public void MarkBlockchainConfirmed() => Status = DocumentVersionStatus.BlockchainConfirmed;
+    public void MarkBlockchainPending()
+    {
+        EnsureStatus(DocumentVersionStatus.Signed);
+        Status = DocumentVersionStatus.BlockchainPending;
+    }
+
+    public void MarkBlockchainSubmitted()
+    {
+        if (Status is not (DocumentVersionStatus.BlockchainPending or DocumentVersionStatus.BlockchainSubmitted))
+            throw new InvalidOperationException($"Cannot submit blockchain anchor from {Status}.");
+
+        Status = DocumentVersionStatus.BlockchainSubmitted;
+    }
+
+    public void MarkBlockchainConfirmed()
+    {
+        if (Status is not (DocumentVersionStatus.BlockchainPending or DocumentVersionStatus.BlockchainSubmitted))
+            throw new InvalidOperationException($"Cannot confirm blockchain anchor from {Status}.");
+
+        Status = DocumentVersionStatus.BlockchainConfirmed;
+    }
 
     public void Activate()
     {
-        if (Status != DocumentVersionStatus.BlockchainConfirmed)
-            throw new InvalidOperationException("Only a blockchain-confirmed version can become active.");
-
+        EnsureStatus(DocumentVersionStatus.BlockchainConfirmed);
         Status = DocumentVersionStatus.Active;
     }
 
     public void Supersede(string reason)
     {
-        if (Status != DocumentVersionStatus.Active)
-            throw new InvalidOperationException("Only the active version can be superseded.");
+        EnsureStatus(DocumentVersionStatus.Active);
 
-        CorrectionReason = reason;
+        CorrectionReason = string.IsNullOrWhiteSpace(reason)
+            ? "Replaced by a newer confirmed version."
+            : reason.Trim();
+
         SupersededAtUtc = DateTimeOffset.UtcNow;
         Status = DocumentVersionStatus.Superseded;
+    }
+
+    private void EnsureStatus(DocumentVersionStatus expected)
+    {
+        if (Status != expected)
+            throw new InvalidOperationException($"Expected status {expected} but found {Status}.");
     }
 }

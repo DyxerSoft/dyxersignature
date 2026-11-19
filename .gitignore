@@ -8,6 +8,10 @@
 **/node_modules/
 **/dist/
 
+# Runtime data
+.data/
+backend/.data/
+
 # Env / secrets
 .env
 .env.*
