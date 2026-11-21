@@ -1,0 +1,28 @@
+:root {
+  color-scheme: light;
+
+  --color-bg: #f6f7f9;
+  --color-surface: #ffffff;
+  --color-text: #17202a;
+  --color-text-muted: #667085;
+  --color-border: #dfe3e8;
+
+  /* Reemplazar por identidad corporativa aprobada sin modificar componentes. */
+  --color-primary: #243447;
+  --color-primary-contrast: #ffffff;
+
+  --color-success: #18794e;
+  --color-warning: #9a6700;
+  --color-danger: #b42318;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --shadow-sm: 0 1px 2px rgb(16 24 40 / 0.06);
+}
