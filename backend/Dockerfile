@@ -2,6 +2,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 COPY backend/DyxerSignature.slnx backend/
 COPY backend/src/DyxerSignature.Api/DyxerSignature.Api.csproj backend/src/DyxerSignature.Api/
+COPY backend/tests/DyxerSignature.Api.Tests/DyxerSignature.Api.Tests.csproj backend/tests/DyxerSignature.Api.Tests/
 RUN dotnet restore backend/DyxerSignature.slnx
 COPY backend/ backend/
 RUN dotnet publish backend/src/DyxerSignature.Api/DyxerSignature.Api.csproj \
@@ -14,4 +15,3 @@ EXPOSE 8080
 COPY --from=build /app/publish .
 USER $APP_UID
 ENTRYPOINT ["dotnet", "DyxerSignature.Api.dll"]
-
