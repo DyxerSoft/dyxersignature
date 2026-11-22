@@ -41,6 +41,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             entity.Property(x => x.StorageKey).HasMaxLength(500);
             entity.Property(x => x.CorrectionReason).HasMaxLength(500);
 
+            entity.HasOne<Contract>()
+                .WithMany()
+                .HasForeignKey(x => x.ContractId)
+                .OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(x => new { x.ContractId, x.VersionNumber }).IsUnique();
 
             entity.HasIndex(x => x.ContractId)
@@ -59,6 +63,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             entity.Property(x => x.TransactionHash).HasMaxLength(80);
             entity.Property(x => x.PreparedEnvelopeXdr).HasColumnType("text");
             entity.Property(x => x.LastError).HasMaxLength(2000);
+            entity.HasOne<ContractDocumentVersion>()
+                .WithMany()
+                .HasForeignKey(x => x.DocumentVersionId)
+                .OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(x => x.DocumentVersionId).IsUnique();
             entity.HasIndex(x => x.DocumentHash);
         });
@@ -69,6 +77,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             entity.HasKey(x => x.Id);
             entity.Property(x => x.EvidenceHash).HasMaxLength(64).IsRequired();
             entity.Property(x => x.CanonicalJson).HasColumnType("jsonb").IsRequired();
+            entity.HasOne<ContractDocumentVersion>()
+                .WithMany()
+                .HasForeignKey(x => x.DocumentVersionId)
+                .OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(x => x.DocumentVersionId).IsUnique();
         });
 
@@ -79,6 +91,14 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             entity.Property(x => x.EventType).HasMaxLength(100).IsRequired();
             entity.Property(x => x.ActorType).HasMaxLength(50).IsRequired();
             entity.Property(x => x.MetadataJson).HasColumnType("jsonb");
+            entity.HasOne<Contract>()
+                .WithMany()
+                .HasForeignKey(x => x.ContractId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<ContractDocumentVersion>()
+                .WithMany()
+                .HasForeignKey(x => x.DocumentVersionId)
+                .OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(x => new { x.ContractId, x.OccurredAtUtc });
         });
 
@@ -104,8 +124,17 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             entity.Property(x => x.IpAddress).HasMaxLength(64);
             entity.Property(x => x.UserAgent).HasMaxLength(500);
             entity.Property(x => x.DocumentHash).HasMaxLength(64).IsRequired();
+            entity.HasOne<Contract>()
+                .WithMany()
+                .HasForeignKey(x => x.ContractId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<ContractDocumentVersion>()
+                .WithMany()
+                .HasForeignKey(x => x.DocumentVersionId)
+                .OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(x => new { x.ContractId, x.SignedAtUtc });
             entity.HasIndex(x => x.DocumentVersionId);
         });
     }
 }
+
