@@ -6,7 +6,7 @@ DyxerSignature es una plataforma web de **Dyxersoft** para administrar el ciclo 
 
 **Portal del proyecto:** [signature.dyxersoft.com](https://signature.dyxersoft.com) (dominio destinado al despliegue y presentación del MVP; su disponibilidad depende de la publicación del entorno).
 
-> **Estado:** MVP para la hackatón Stellar, en desarrollo e integración. Las funcionalidades descritas representan el alcance del MVP; las integraciones avanzadas y los objetivos de rendimiento se identifican por separado. El anclaje blockchain se realiza en **Stellar Testnet**, no en Mainnet.
+> **Estado actual (22/11/2026):** MVP Stellar integrado en **`main`** mediante [PR #4](https://github.com/DyxerSoft/dyxersignature/pull/4), commit [`bca1dbd`](https://github.com/DyxerSoft/dyxersignature/commit/bca1dbd1cd856b6807e00229ee542276dc47f2a0). Backend y frontend compilan y pasan CI; el flujo API/Outbox a **Stellar Testnet** se validó en GitHub Actions con dos transacciones reales. **El despliegue público y la prueba interactiva en navegador siguen pendientes de verificación**, por lo que no se afirma que la demo pública esté disponible.
 
 ## El problema
 
@@ -132,12 +132,12 @@ Los endpoints y el comportamiento final deben confirmarse contra la versión des
 
 ## Ejecución de la versión del MVP
 
-La integración para la hackatón se desarrolla en la rama **`feat/stellar-hackathon-mvp`**. Mientras no se incorpore a `main`, la implementación de `main` puede corresponder al prototipo técnico anterior. Para reproducir el stack descrito aquí, usar la rama de Stellar:
+**La implementación Stellar ya está en `main`**, no en una rama pendiente. El backend activo utiliza `StellarBlockchainGateway.cs`; los gateways Nethereum y simulado, así como el contrato Solidity anterior, fueron retirados en la integración. Para reproducir el MVP desde el código principal:
 
 ```bash
 git clone https://github.com/DyxerSoft/dyxersignature.git
 cd dyxersignature
-git checkout feat/stellar-hackathon-mvp
+git checkout main
 
 cp .env.example .env
 # Sustituir los valores de demostración de .env por credenciales locales seguras.
@@ -170,10 +170,10 @@ La medición de throughput del flujo de negocio incluye creación, carga, revisi
 
 ## Recursos técnicos
 
-- [Guía de demostración del MVP](https://github.com/DyxerSoft/dyxersignature/blob/feat/stellar-hackathon-mvp/docs/implementation/demo-guide.md) *(rama Stellar)*
-- [Plan por fases](https://github.com/DyxerSoft/dyxersignature/blob/feat/stellar-hackathon-mvp/docs/implementation/phase-plan.md) *(rama Stellar)*
-- [Prueba de carga](https://github.com/DyxerSoft/dyxersignature/blob/feat/stellar-hackathon-mvp/docs/implementation/load-test.md) *(rama Stellar)*
-- [Integración Stellar y verificación](https://github.com/DyxerSoft/dyxersignature/blob/feat/stellar-hackathon-mvp/backend/blockchain/README.md) *(rama Stellar)*
+- [Guía de demostración del MVP](docs/implementation/demo-guide.md)
+- [Plan por fases](docs/implementation/phase-plan.md)
+- [Prueba de carga](docs/implementation/load-test.md)
+- [Integración Stellar y verificación](backend/blockchain/README.md)
 - [Repositorio DyxerSignature](https://github.com/DyxerSoft/dyxersignature)
 
 ---
