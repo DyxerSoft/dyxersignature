@@ -34,6 +34,9 @@ export async function uploadDocument(
   if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
     throw new Error("El MVP Stellar admite PDF; las plantillas Word requieren un endpoint aún no implementado.");
   }
+  // Validate before creating a contract; otherwise invalid uploads leave
+  // empty draft contracts that inflate Dashboard totals.
+  await ensurePdfStructure(file);
   const uniqueRef = "IJ-DOC-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
   const contract = await createContract(uniqueRef, name);
   const version = await uploadDraftVersion(contract.id, file);
@@ -60,13 +63,7 @@ export async function openDocument(id: string, action: "view" | "download"): Pro
 
   try {
     const blob = await getDocumentPdf(id);
-    if (blob.size === 0) throw new Error("El archivo se encuentra vacío.");
-    const header = await blob.slice(0, 5).text();
-    const tail = await blob.slice(Math.max(0, blob.size - 4096)).text();
-    if (header !== "%PDF-" || !tail.includes("startxref") || !tail.includes("%%EOF")) {
-      throw new Error("El archivo almacenado no contiene una estructura PDF completa. "
-        + "El registro se conserva para auditoría; se necesita una versión corregida del documento.");
-    }
+    await ensurePdfStructure(blob);
 
     const url = URL.createObjectURL(blob);
     if (action === "view") {
@@ -90,4 +87,15 @@ export async function openDocument(id: string, action: "view" | "download"): Pro
     if (preview && !preview.closed) preview.close();
     throw cause;
   }
+}
+
+async function ensurePdfStructure(file: Blob): Promise<void> {
+  if (file.size < 64 || file.size > 25_000_000)
+    throw new Error("El archivo debe ser un PDF válido de hasta 25 MB.");
+  const header = await file.slice(0, 5).text();
+  const tail = await file.slice(Math.max(0, file.size - 4096)).text();
+  if (header !== "%PDF-" || !tail.includes("startxref") || !tail.includes("%%EOF"))
+    throw new Error("El documento no contiene una estructura PDF completa. "
+      + "Descarga un PDF original válido o registra una versión corregida. "
+      + "Los documentos ya firmados permanecen inmutables.");
 }
