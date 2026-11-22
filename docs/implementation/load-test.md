@@ -4,6 +4,8 @@
 
 La acción `MVP load test` levanta PostgreSQL, SeaweedFS, API y frontend con Docker Compose en un runner `ubuntu-24.04`, genera credenciales efímeras y ejecuta k6 `0.54.0`. Para ejecutar el perfil de aceptación, usa `workflow_dispatch` con **100 VUs** y **60s**. Un push a `feat/stellar-hackathon-mvp` con `[load-test]` en el mensaje ejecuta los mismos valores predeterminados.
 
+En CI, k6 comparte la red del contenedor API y las URLs prefirmadas usan el DNS interno `seaweedfs:8333`, de modo que el runner verifica el mismo endpoint S3 privado sin depender de `localhost` entre contenedores. La configuración de desarrollo para descargas desde el navegador conserva `http://localhost:8333`.
+
 Los volúmenes y contenedores del runner se eliminan al terminar. El artefacto de cada ejecución contiene el resumen del escenario, el resumen crudo k6, versiones de Docker/Compose y las imágenes observadas; la retención del artefacto es de 30 días.
 
 ## Carga y métricas
