@@ -47,15 +47,16 @@ public sealed class S3DocumentStorage : IDocumentStorage, IDisposable
         CancellationToken cancellationToken)
     {
         var key = $"contracts/{contractId:N}/versions/v{versionNumber}/{Guid.NewGuid():N}.pdf";
-        await _internalClient.PutObjectAsync(new PutObjectRequest
+        var request = new PutObjectRequest
         {
             BucketName = _options.BucketName,
             Key = key,
             InputStream = content,
-            ContentType = "application/pdf",
-            ContentDisposition = "attachment; filename=dyxersignature-document.pdf",
-            CacheControl = "no-store"
-        }, cancellationToken);
+            ContentType = "application/pdf"
+        };
+        request.Headers.ContentDisposition = "attachment; filename=dyxersignature-document.pdf";
+        request.Headers.CacheControl = "no-store";
+        await _internalClient.PutObjectAsync(request, cancellationToken);
 
         return key;
     }
