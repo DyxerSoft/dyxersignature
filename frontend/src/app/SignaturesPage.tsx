@@ -5,7 +5,6 @@ import { getContract, listContracts, listSigners } from "../features/stellar/api
 import type { ContractDetail, ContractListItem, Signer } from "../features/stellar/types";
 
 export function SignaturesPage({ onNavigate }: { onNavigate: (page: string) => void }) {
-  const [scriptName,setScriptName]=useState("");
   const [contracts,setContracts]=useState<ContractListItem[]>([]);
   const [contractId,setContractId]=useState("");
   const [detail,setDetail]=useState<ContractDetail|null>(null);
@@ -36,25 +35,11 @@ export function SignaturesPage({ onNavigate }: { onNavigate: (page: string) => v
 
   return <div className="section-content">
     <div className="section-intro"><span className="eyebrow">FIRMA DIGITAL</span><h2>Firmas</h2>
-      <p>Consulta firmas registradas. El flujo de firma y Stellar está disponible en Contratos.</p>
+      <p>Consulta las firmas asociadas a cada contrato y su historial de validación.</p>
     </div>
-    <section className="panel signer-setup">
-      <div className="panel-heading"><div><span className="panel-icon"><Icon name="shield" size={20}/></span>
-        <div><h3>Firma digital personal</h3><p>Integración futura con agente local y certificado digital.</p></div>
-      </div></div>
-      <label className="ps1-picker"><span><Icon name="file" size={18}/></span><div>
-        <strong>{scriptName||"Selecciona tu archivo .ps1"}</strong>
-        <small>Archivo local. No se sube ni se ejecuta desde este navegador.</small>
-      </div><input type="file" accept=".ps1,text/plain"
-        onChange={event=>setScriptName(event.target.files?.[0]?.name??"")}/>
-        <em>{scriptName?"Seleccionado":"Seleccionar"}</em></label>
-      <div className="signer-security-note"><Icon name="help" size={17}/>
-        <p>El MVP no ejecuta PowerShell desde la web ni reemplaza una firma digital certificada.</p>
-      </div>
-    </section>
     <section className="panel signature-contracts">
       <div className="panel-heading"><div><span className="panel-icon"><Icon name="pen" size={20}/></span>
-        <div><h3>Historial de firmas por contrato</h3><p>Firmantes reales del backend Stellar</p></div>
+        <div><h3>Historial de firmas por contrato</h3><p>Firmantes registrados en cada documento</p></div>
       </div><button className="text-link" type="button" onClick={()=>onNavigate("Contratos")}>
         Abrir contratos <Icon name="arrow" size={14}/></button></div>
       <div style={{padding:"1rem"}}>
