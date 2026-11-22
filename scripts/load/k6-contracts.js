@@ -37,7 +37,7 @@ export const options = {
 
 export function setup() {
   const response = http.post(`${baseUrl}/api/v1/auth/dev-token`, null, {
-    tags: { endpoint: 'dev_token' },
+    tags: { name: 'POST /api/v1/auth/dev-token', endpoint: 'dev_token' },
   });
   const valid = check(response, {
     'development token issued': (result) => result.status === 200 && Boolean(result.json('accessToken')),
@@ -66,7 +66,7 @@ export default function (data) {
         ...headers,
         'Content-Type': 'application/json',
       },
-      tags: { endpoint: 'create_contract' },
+      tags: { name: 'POST /api/v1/contracts', endpoint: 'create_contract' },
     },
   );
 
@@ -86,7 +86,7 @@ export default function (data) {
     {
       file: http.file(syntheticPdf, 'load-test.pdf', 'application/pdf'),
     },
-    { headers, tags: { endpoint: 'upload_pdf' } },
+    { headers, tags: { name: 'POST /api/v1/contracts/:id/versions', endpoint: 'upload_pdf' } },
   );
   const documentVersionId = uploaded.status === 201 ? uploaded.json('documentVersionId') : null;
   const documentHash = uploaded.status === 201 ? uploaded.json('documentHash') : null;
@@ -105,7 +105,7 @@ export default function (data) {
     JSON.stringify({ documentHash }),
     {
       headers: { ...headers, 'Content-Type': 'application/json' },
-      tags: { endpoint: 'review_hash' },
+      tags: { name: 'POST /api/v1/contracts/:id/versions/:versionId/review', endpoint: 'review_hash' },
     },
   );
   if (!check(reviewed, { 'document hash reviewed': (result) => result.status === 204 })) {
@@ -120,7 +120,7 @@ export default function (data) {
     JSON.stringify({ documentHash, signerName: 'Synthetic Load Test', signerEmail: 'loadtest@dyxer.local' }),
     {
       headers: { ...headers, 'Content-Type': 'application/json' },
-      tags: { endpoint: 'sign_and_enqueue' },
+      tags: { name: 'POST /api/v1/contracts/:id/versions/:versionId/sign', endpoint: 'sign_and_enqueue' },
     },
   );
   const signAccepted = check(signed, {
@@ -135,7 +135,7 @@ export default function (data) {
 
   const verified = http.get(
     `${baseUrl}/api/v1/contracts/${contractId}/versions/${documentVersionId}/verify`,
-    { headers, tags: { endpoint: 'verify_stored_pdf' } },
+    { headers, tags: { name: 'GET /api/v1/contracts/:id/versions/:versionId/verify', endpoint: 'verify_stored_pdf' } },
   );
   const contentMatches = check(verified, {
     'stored PDF hash verified while Stellar is pending': (result) =>
@@ -150,7 +150,7 @@ export default function (data) {
 
   const downloadLink = http.get(
     `${baseUrl}/api/v1/documents/${documentVersionId}/download`,
-    { headers, tags: { endpoint: 'authorized_download_link' } },
+    { headers, tags: { name: 'GET /api/v1/documents/:versionId/download', endpoint: 'authorized_download_link' } },
   );
   const downloadUrl = downloadLink.status === 200 ? downloadLink.json('downloadUrl') : null;
   const linkIssued = check(downloadLink, {
@@ -163,7 +163,7 @@ export default function (data) {
     return;
   }
 
-  const downloaded = http.get(downloadUrl, { tags: { endpoint: 'download_pdf' } });
+  const downloaded = http.get(downloadUrl, { tags: { name: 'GET s3/presigned-pdf', endpoint: 'download_pdf' } });
   downloadHttpStatus.add(downloaded.status);
   downloadErrorCode.add(downloaded.error_code || 0);
   if (__VU === 1 && __ITER === 0) {
