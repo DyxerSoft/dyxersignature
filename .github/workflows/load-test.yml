@@ -81,7 +81,7 @@ jobs:
       - name: Run 100-user signed-document workflow test
         run: |
           mkdir -p artifacts
-          docker run --rm --network host \
+          docker run --rm --network host --user "$(id -u):$(id -g)" \
             --workdir /artifacts \
             -e BASE_URL=http://127.0.0.1:8080 \
             -e K6_VUS -e K6_DURATION \

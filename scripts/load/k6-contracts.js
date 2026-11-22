@@ -5,6 +5,7 @@ import { Counter, Trend } from 'k6/metrics';
 const contractsCompleted = new Counter('contracts_completed');
 const contractWorkflowErrors = new Counter('contract_workflow_errors');
 const contractWorkflowDuration = new Trend('contract_workflow_duration', true);
+const downloadHttpStatus = new Trend('download_http_status');
 const failedAt = {
   create: new Counter('workflow_failed_create'),
   upload: new Counter('workflow_failed_upload'),
@@ -162,6 +163,7 @@ export default function (data) {
   }
 
   const downloaded = http.get(downloadUrl, { tags: { endpoint: 'download_pdf' } });
+  downloadHttpStatus.add(downloaded.status);
   const pdfDownloaded = check(downloaded, {
     'private PDF downloaded from presigned URL': (result) =>
       result.status === 200 && result.body.startsWith('%PDF-'),
@@ -172,6 +174,10 @@ export default function (data) {
   } else {
     contractWorkflowErrors.add(1);
     failedAt.download.add(1);
+    const s3ErrorCode = downloaded.body.match(/<Code>([^<]+)<\/Code>/)?.[1] || 'unavailable';
+    if (__ITER === 0 && __VU <= 3) {
+      console.error(`Presigned PDF download failed: HTTP ${downloaded.status}; S3 code ${s3ErrorCode}.`);
+    }
   }
 }
 
@@ -198,6 +204,10 @@ export function handleSummary(data) {
     contractsPerSecond: Number(throughput.toFixed(3)),
     p95WorkflowMs: Number(p95.toFixed(2)),
     httpRequestErrorRate: Number(requestErrorRate.toFixed(5)),
+    downloadHttpStatus: {
+      average: Number((data.metrics.download_http_status?.values.avg || 0).toFixed(2)),
+      p95: Number((data.metrics.download_http_status?.values['p(95)'] || 0).toFixed(2)),
+    },
     stageFailures,
     checks,
     targetBandContractsPerSecond: '7-10',
