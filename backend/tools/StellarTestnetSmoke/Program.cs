@@ -172,6 +172,19 @@ static async Task RunApiEndToEndAsync(string apiBaseUrl)
     if (!downloadedBytes.SequenceEqual(correctedPdfBytes) || downloadedHash != secondVersion.DocumentHash)
         throw new InvalidOperationException("The downloaded private PDF did not match the signed version hash.");
 
+    using var dashboardResponse = await client.GetAsync("api/v1/dashboard");
+    using var dashboardDocument = await ReadJsonAsync(dashboardResponse);
+    var dashboard = dashboardDocument.RootElement;
+    var dashboardContractCount = dashboard.GetProperty("contracts").GetProperty("total").GetInt32();
+    var dashboardSignatureCount = dashboard.GetProperty("signatures").GetProperty("total").GetInt32();
+    var averageSignaturesPerContract = dashboard.GetProperty("signatures").GetProperty("averagePerContract").GetDouble();
+    var pendingAnchorCount = dashboard.GetProperty("blockchain").GetProperty("pending").GetInt32();
+    if (dashboardContractCount != 1 || dashboardSignatureCount != 2 ||
+        averageSignaturesPerContract != 2 || pendingAnchorCount != 0)
+    {
+        throw new InvalidOperationException("Dashboard metrics did not reflect the completed Testnet contract flow.");
+    }
+
     Console.WriteLine("NETWORK=Stellar Testnet through API Outbox");
     Console.WriteLine($"CONTRACT_ID={contractId}");
     Console.WriteLine("PRESERVED_VERSION_COUNT=2");
@@ -186,6 +199,10 @@ static async Task RunApiEndToEndAsync(string apiBaseUrl)
     Console.WriteLine($"DOWNLOADED_BYTES={downloadedBytes.Length}");
     Console.WriteLine("API_STELLAR_VERIFY=true");
     Console.WriteLine("API_STORED_CONTENT_VERIFY=true");
+    Console.WriteLine($"DASHBOARD_CONTRACT_TOTAL={dashboardContractCount}");
+    Console.WriteLine($"DASHBOARD_SIGNATURE_TOTAL={dashboardSignatureCount}");
+    Console.WriteLine($"DASHBOARD_AVERAGE_SIGNATURES_PER_CONTRACT={averageSignaturesPerContract:F2}");
+    Console.WriteLine($"DASHBOARD_PENDING_ANCHORS={pendingAnchorCount}");
 }
 
 static async Task<(string VersionId, string DocumentHash)> UploadAndSignVersionAsync(
