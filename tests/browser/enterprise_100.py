@@ -189,6 +189,10 @@ async def assert_dashboard(browser, results):
             "PDF version mismatch",dashboard["documents"]["versions"],published)
         assert dashboard["signatures"]["total"]==signed
         assert dashboard["signatures"]["frequency"]["one"]==signed
+        months=dashboard["signatures"]["monthly"]
+        assert len(months)==6 and len({m["month"] for m in months})==6
+        assert months[-1]["count"]==signed, "Last month does not correlate with signed events"
+        assert sum(m["count"] for m in months)==signed, "Monthly trend does not correlate with signatures"
         assert dashboard["signatures"]["averagePerContract"]==round(signed/created,2)
         assert dashboard["blockchain"]["pending"]==signed, (
             "Outbox anchor backlog mismatch",dashboard["blockchain"]["pending"],signed)
@@ -209,6 +213,17 @@ async def assert_dashboard(browser, results):
             bounds=await kpi.nth(idx).bounding_box()
             assert bounds and bounds["width"]>70 and bounds["height"]>50
         assert str(signed) in (await kpi.nth(1).inner_text())
+        trend=page.locator(".activity-panel")
+        assert await trend.locator(".signature-chart-month").count()==6
+        assert await trend.locator(".signature-metric-strip > div").count()==3
+        assert await page.locator(".activity-panel .frequency-summary").count()==0
+        panel_box=await trend.bounding_box()
+        metric_box=await trend.locator(".signature-metric-strip").bounding_box()
+        assert panel_box and metric_box
+        assert metric_box["y"] >= panel_box["y"], "Signature cards escaped above their panel"
+        assert metric_box["y"]+metric_box["height"] <= panel_box["y"]+panel_box["height"]+3, (
+            "Signature cards escaped below their panel")
+        assert str(signed) in (await trend.locator(".signature-chart-month").last.inner_text())
         assert await page.locator(".activity-event").count()>0
         return {"contracts":created,"documents":published,"signatures":signed,
                 "pendingAnchors":dashboard["blockchain"]["pending"],

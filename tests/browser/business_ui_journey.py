@@ -107,12 +107,17 @@ async def main():
             assert metrics["contracts"]["total"]==76
             assert metrics["documents"]["versions"]==51
             assert metrics["signatures"]["total"]==26
+            assert len(metrics["signatures"]["monthly"])==6
+            assert metrics["signatures"]["monthly"][-1]["count"]==26
+            assert sum(row["count"] for row in metrics["signatures"]["monthly"])==26
             assert metrics["signatures"]["frequency"]["one"]==26
             assert metrics["blockchain"]["pending"]==26
             assert metrics["signatures"]["averagePerContract"]==round(26/76,2)
             cards=await page.locator(".stats-grid .stat-card").all_inner_texts()
             assert "51" in cards[0] and "76" in cards[1] and "26" in cards[2]
             assert await page.locator(".stellar-health-panel .stellar-kpi").count()==6
+            assert await page.locator(".activity-panel .signature-chart-month").count()==6
+            assert await page.locator(".activity-panel .signature-metric-strip > div").count()==3
             await page.screenshot(path=str(OUT/"juanjo-dashboard-correlated.png"),full_page=True)
             report["dashboard"]={"contracts":76,"pdfVersions":51,"signatures":26,
                                  "pending":26,"oneSignatureContracts":26,
