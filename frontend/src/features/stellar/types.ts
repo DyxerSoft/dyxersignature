@@ -52,6 +52,12 @@ export type Signer = {
 
 export type DashboardMetrics = {
   generatedAtUtc: string;
+  recentActivity?: {
+    contractId: string;
+    businessReference: string;
+    eventType: string;
+    occurredAtUtc: string;
+  }[];
   contracts: {
     total: number;
     active: number;
