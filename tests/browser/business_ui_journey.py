@@ -9,11 +9,12 @@ import uuid
 from pathlib import Path
 
 from playwright.async_api import async_playwright
+from pdf_fixture import valid_pdf_text
 
 BASE="http://127.0.0.1:3000"
 OUT=Path("artifacts")
 OUT.mkdir(exist_ok=True)
-PDF=b"%PDF-1.4\n% Inmobiliaria Juanjo contrato de reserva documental\n%%EOF\n"
+PDF=valid_pdf_text().encode("ascii")
 
 
 async def main():
