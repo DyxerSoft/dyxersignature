@@ -17,6 +17,7 @@ from collections import Counter
 from pathlib import Path
 
 from playwright.async_api import async_playwright
+from pdf_fixture import valid_pdf_text
 
 BASE = "http://127.0.0.1:3000"
 REPORT = Path("artifacts/playwright-enterprise-100.json")
@@ -24,7 +25,7 @@ RUN = "IJ-" + uuid.uuid4().hex[:8].upper()
 USERS = int(os.environ.get("BROWSER_USERS", "100"))
 assert USERS == 100, "Acceptance profile must exercise exactly 100 browser users."
 SCENARIOS = ["read", "create", "upload", "sign"]
-PDF_HEADER = "%PDF-1.4\n% Documento contractual de Inmobiliaria Juanjo\n1 0 obj\n<<>>\nendobj\n%%EOF\n"
+PDF_HEADER = valid_pdf_text()
 
 
 async def api_in_browser(page, method, path, payload=None):
@@ -43,7 +44,16 @@ async def api_in_browser(page, method, path, payload=None):
       }
       const response = await fetch('/api/v1' + path, {method,headers,body});
       const data = response.status === 204 ? null :
-        await response.json().catch(() => null);
+        (response.headers.get('content-type')?.includes('application/pdf')
+          ? await (async () => {
+              const buf = await response.arrayBuffer();
+              const decoder = new TextDecoder('latin1');
+              const header = decoder.decode(buf.slice(0,5));
+              const tail = decoder.decode(buf.slice(Math.max(0,buf.byteLength-4096)));
+              return {pdfBytes:buf.byteLength,
+                validPdf:header === '%PDF-' && tail.includes('startxref') && tail.includes('%%EOF')};
+            })()
+          : await response.json().catch(() => null));
       if (!response.ok) {
         const err = data?.title || data?.detail || 'sin respuesta JSON';
         throw new Error(method + ' ' + path.replace(/[0-9a-f-]{36}/g, ':id') +
@@ -101,11 +111,11 @@ async def simulated_user(browser, idx):
                 verification = await api_in_browser(page,"GET",
                     f"/contracts/{contract_id}/versions/{version_id}/verify")
                 assert verification["data"]["contentMatches"] is True
-                download = await api_in_browser(page,"GET",f"/documents/{version_id}/download")
-                url = download["data"]["downloadUrl"]
-                # Download actual S3 object using the HTTP request context, not a stub.
-                response = await context.request.get(url,timeout=30000)
-                assert response.status==200 and (await response.body()).startswith(b"%PDF-")
+                # Protected public API -> private S3 stream -> valid PDF (not just '%PDF-').
+                document = await api_in_browser(page,"GET",f"/documents/{version_id}/file")
+                assert document["status"]==200
+                assert document["data"]["validPdf"] is True
+                assert document["data"]["pdfBytes"]>200
                 result["pdf_verified"]=True
                 if scenario=="sign":
                     reviewed=await api_in_browser(page,"POST",
@@ -183,8 +193,10 @@ async def assert_dashboard(browser, results):
         assert dashboard["blockchain"]["pending"]==signed, (
             "Outbox anchor backlog mismatch",dashboard["blockchain"]["pending"],signed)
         assert dashboard["blockchain"]["confirmed"]==0, "Unexpected real Testnet confirmations in isolated CI"
-        assert len(dashboard["recentActivity"])>0
-        assert all(x["businessReference"].startswith(RUN) for x in dashboard["recentActivity"])
+        assert len(dashboard["recentActivity"])==8, "The recent list must contain 8 distinct contracts"
+        assert len({x["contractId"] for x in dashboard["recentActivity"]})==8
+        assert all(x["businessReference"].startswith(RUN) and x["eventCount"]>=1
+                   for x in dashboard["recentActivity"])
         # Frontend values must match the API, not only exist in JSON.
         await page.reload()
         await page.locator(".stats-grid .stat-card").first.wait_for()

@@ -64,6 +64,52 @@ public sealed class DocumentsController(
         });
     }
 
+    // Serve private S3 objects through the authenticated API. The browser never
+    // needs the S3 credentials, private hostname, or a presigned public URL.
+    // Also avoids dependence on Cloudflare/Nginx forwarding SigV4 Host headers.
+    [HttpGet("documents/{versionId:guid}/file")]
+    public async Task<IActionResult> FileContent(
+        Guid versionId,
+        [FromQuery] bool download = false,
+        CancellationToken cancellationToken = default)
+    {
+        var document = await (
+            from version in db.ContractDocumentVersions.AsNoTracking()
+            join contract in db.Contracts.AsNoTracking()
+                on version.ContractId equals contract.Id
+            where version.Id == versionId && contract.DeletedAtUtc == null
+            select new
+            {
+                version.Id,
+                version.ContractId,
+                version.VersionNumber,
+                version.StorageKey
+            }).SingleOrDefaultAsync(cancellationToken);
+
+        if (document is null || document.StorageKey is null)
+            return NotFound();
+
+        var stream = await storage.OpenReadAsync(document.StorageKey, cancellationToken);
+        Response.Headers.CacheControl = "private, no-store, max-age=0";
+        Response.Headers.XContentTypeOptions = "nosniff";
+        // No file name is interpolated from user input.
+        var name = $"dyxersignature-v{document.VersionNumber}.pdf";
+        Response.Headers.ContentDisposition =
+            $"{(download ? "attachment" : "inline")}; filename=\"{name}\"";
+
+        db.AuditEvents.Add(new AuditEvent(
+            document.ContractId,
+            document.Id,
+            download ? "DOCUMENT_DOWNLOADED" : "DOCUMENT_VIEWED",
+            "USER",
+            User.FindFirst("sub")?.Value,
+            JsonSerializer.Serialize(new { document.VersionNumber }),
+            HttpContext.TraceIdentifierToGuid()));
+        await db.SaveChangesAsync(cancellationToken);
+
+        return File(stream, "application/pdf");
+    }
+
     [HttpGet("contracts/{contractId:guid}/versions/{versionId:guid}/verify")]
     public async Task<ActionResult<object>> Verify(
         Guid contractId,

@@ -121,17 +121,34 @@ public sealed class DashboardController(AppDbContext db) : ControllerBase
             fivePlus = signatureFrequency.Count(count => count >= 5)
         };
 
-        // Only the latest persisted audit entries; no placeholder activity.
+        // Dashboard activity shows distinct contracts (not every audit event).
+        // The full append-only timeline remains available from /contracts/{id}/audit.
+        var auditSummary = db.AuditEvents.AsNoTracking()
+            .GroupBy(e => e.ContractId)
+            .Select(g => new
+            {
+                ContractId = g.Key,
+                LastEventAtUtc = g.Max(e => e.OccurredAtUtc),
+                EventCount = g.Count()
+            });
+
         var recentActivity = await (
-            from audit in db.AuditEvents.AsNoTracking()
-            join contract in contracts on audit.ContractId equals contract.Id
-            orderby audit.OccurredAtUtc descending
+            from contract in contracts
+            join summary in auditSummary on contract.Id equals summary.ContractId
+            orderby summary.LastEventAtUtc descending, contract.Id
             select new
             {
-                audit.ContractId,
+                ContractId = contract.Id,
                 contract.BusinessReference,
-                audit.EventType,
-                audit.OccurredAtUtc
+                contract.Title,
+                summary.EventCount,
+                OccurredAtUtc = summary.LastEventAtUtc,
+                EventType = db.AuditEvents.AsNoTracking()
+                    .Where(e => e.ContractId == contract.Id)
+                    .OrderByDescending(e => e.OccurredAtUtc)
+                    .ThenByDescending(e => e.Id)
+                    .Select(e => e.EventType)
+                    .FirstOrDefault()
             })
             .Take(8)
             .ToListAsync(cancellationToken);
