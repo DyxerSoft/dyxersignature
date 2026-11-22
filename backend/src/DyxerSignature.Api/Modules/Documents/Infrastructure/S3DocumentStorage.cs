@@ -104,6 +104,7 @@ public sealed class S3DocumentStorage : IDocumentStorage, IDisposable
         var config = new AmazonS3Config
         {
             ServiceURL = serviceUrl,
+            UseHttp = serviceUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase),
             ForcePathStyle = true,
             AuthenticationRegion = _options.Region
         };

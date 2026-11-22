@@ -179,7 +179,7 @@ export default function (data) {
   } else {
     contractWorkflowErrors.add(1);
     failedAt.download.add(1);
-    const s3ErrorCode = downloaded.body.match(/<Code>([^<]+)<\/Code>/)?.[1] || 'unavailable';
+    const s3ErrorCode = downloaded.body?.match(/<Code>([^<]+)<\/Code>/)?.[1] || 'unavailable';
     if (__ITER === 0 && __VU <= 3) {
       console.error(`Presigned PDF download failed: HTTP ${downloaded.status}; S3 code ${s3ErrorCode}.`);
     }
