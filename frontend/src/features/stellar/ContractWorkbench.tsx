@@ -3,7 +3,7 @@ import {
   compareVersions,
   createContract,
   getContract,
-  getDownloadUrl,
+
   listContracts,
   listSigners,
   reviewVersion,
@@ -11,6 +11,7 @@ import {
   uploadDraftVersion,
   verifyVersion
 } from "./api";
+import { openDocument } from "../documents/api";
 import type {
   ContractComparison,
   ContractDetail,
@@ -142,10 +143,10 @@ export function ContractWorkbench({ initialContractId = "" }: { initialContractI
     setBusy(true);
     setError("");
     try {
-      const link = await getDownloadUrl(version.id);
-      window.location.assign(link.downloadUrl);
+      await openDocument(version.id, "download");
     } catch (cause) {
       setError(messageFrom(cause));
+    } finally {
       setBusy(false);
     }
   }
