@@ -29,10 +29,7 @@ services:
       SEAWEEDFS_SECRET_KEY: ${S3_SECRET_KEY:?Set S3_SECRET_KEY}
     volumes:
       - ${SIGNATURE_DATA_ROOT:?Set SIGNATURE_DATA_ROOT}/seaweedfs:/data
-    networks:
-      backend: {}
-      edge:
-        aliases: [signature-seaweedfs]
+    networks: [backend]
 
   s3-init:
     image: amazon/aws-cli:2.42.1

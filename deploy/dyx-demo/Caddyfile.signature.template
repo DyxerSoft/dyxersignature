@@ -13,7 +13,7 @@ http://signature.dyxersoft.com {
     # URLs S3 prefirmadas: solo accesibles con firma y caducidad corta.
     # El Host debe conservarse para validar la firma SigV4.
     handle /dyxersignature/* {
-        reverse_proxy signature-seaweedfs:8333 {
+        reverse_proxy signature-frontend:80 {
             header_up -Authorization
         }
     }
