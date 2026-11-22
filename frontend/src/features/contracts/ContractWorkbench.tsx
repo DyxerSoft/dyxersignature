@@ -8,6 +8,44 @@ import {
 } from "./api";
 import type { ContractDetail, DigitizationJobDetail, DetectedSignature } from "./types";
 
+function formatTruncatedHash(hash?: string | null, start = 8, end = 8): string {
+  if (!hash) return "—";
+  if (hash.length <= start + end) return hash;
+  return `${hash.slice(0, start)}...${hash.slice(-end)}`;
+}
+
+function CopyButton({ text, label }: { text: string; label?: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback si la API de portapapeles no está disponible
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className="button-secondary"
+      style={{
+        minHeight: "28px",
+        padding: "0.2rem 0.5rem",
+        fontSize: "0.75rem",
+        marginLeft: "0.5rem"
+      }}
+      title={copied ? "Copiado en el portapapeles" : (label ?? "Copiar al portapapeles")}
+      aria-label={copied ? "Copiado" : (label ?? "Copiar al portapapeles")}
+    >
+      {copied ? "Copiado" : "Copiar"}
+    </button>
+  );
+}
+
 export function ContractWorkbench() {
   const [businessReference, setBusinessReference] = useState("");
   const [contractId, setContractId] = useState("");
@@ -451,7 +489,10 @@ export function ContractWorkbench() {
             </div>
             <div>
               <span>ID</span>
-              <code>{contract.id}</code>
+              <div style={{ display: "flex", alignItems: "center" }}>
+                <code title={contract.id}>{formatTruncatedHash(contract.id, 8, 6)}</code>
+                <CopyButton text={contract.id} label="Copiar ID de contrato" />
+              </div>
             </div>
           </div>
 
@@ -476,11 +517,25 @@ export function ContractWorkbench() {
                 </div>
                 <dl>
                   <dt>SHA-256</dt>
-                  <dd><code>{version.documentHash ?? "pendiente"}</code></dd>
+                  <dd style={{ display: "flex", alignItems: "center", flexWrap: "wrap" }}>
+                    <code title={version.documentHash ?? ""}>
+                      {version.documentHash ? formatTruncatedHash(version.documentHash, 10, 8) : "pendiente"}
+                    </code>
+                    {version.documentHash && (
+                      <CopyButton text={version.documentHash} label="Copiar huella SHA-256" />
+                    )}
+                  </dd>
                   <dt>Blockchain</dt>
                   <dd>{version.blockchain?.status ?? "pendiente"}</dd>
                   <dt>TX</dt>
-                  <dd><code>{version.blockchain?.transactionHash ?? "—"}</code></dd>
+                  <dd style={{ display: "flex", alignItems: "center", flexWrap: "wrap" }}>
+                    <code title={version.blockchain?.transactionHash ?? ""}>
+                      {version.blockchain?.transactionHash ? formatTruncatedHash(version.blockchain.transactionHash, 10, 8) : "—"}
+                    </code>
+                    {version.blockchain?.transactionHash && (
+                      <CopyButton text={version.blockchain.transactionHash} label="Copiar hash de transacción blockchain" />
+                    )}
+                  </dd>
                   <dt>Bloque</dt>
                   <dd>{version.blockchain?.blockNumber ?? "—"}</dd>
                   {version.correctionReason && (
