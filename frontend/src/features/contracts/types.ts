@@ -18,12 +18,25 @@ export type ContractVersion = {
   createdAtUtc: string;
   signedAtUtc: string | null;
   supersededAtUtc: string | null;
+  traceability?: {
+    eventType: string;
+    actorType: string;
+    actor: string | null;
+    occurredAtUtc: string;
+    details: {
+      fileName?: string;
+      correctionReason?: string | null;
+      changeSummary?: string | null;
+      versionNumber?: number;
+    };
+  }[];
   blockchain: BlockchainInfo | null;
 };
 
 export type ContractDetail = {
   id: string;
   businessReference: string;
+  baseDocumentId?: string;
   status: string;
   currentVersionId: string | null;
   versions: ContractVersion[];
