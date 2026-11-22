@@ -7,4 +7,4 @@ Responsabilidades:
 - integración de firma digital corporativa;
 - entregar al módulo Documents el PDF final firmado.
 
-No almacena lógica de Polygon.
+La transacción de firma no almacena datos personales ni archivos en Stellar. Consulta `backend/blockchain/README.md` para el flujo de anclaje Testnet.

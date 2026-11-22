@@ -5,13 +5,20 @@ using DyxerSignature.Api.Modules.Blockchain.Infrastructure;
 using DyxerSignature.Api.Modules.Documents.Application;
 using DyxerSignature.Api.Modules.Documents.Infrastructure;
 using DyxerSignature.Api.Modules.Evidence.Application;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Logging.ClearProviders();
+builder.Logging.AddJsonConsole(options => options.IncludeScopes = true);
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails();
 builder.Services.AddHealthChecks();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(
@@ -19,31 +26,55 @@ builder.Services.AddDbContext<AppDbContext>(options =>
         ?? throw new InvalidOperationException("Connection string 'Postgres' is required.")));
 
 builder.Services.Configure<StorageOptions>(builder.Configuration.GetSection("Storage"));
-builder.Services.Configure<BlockchainOptions>(builder.Configuration.GetSection("Blockchain"));
+builder.Services.Configure<StellarOptions>(builder.Configuration.GetSection("Stellar"));
 
-builder.Services.AddScoped<IDocumentStorage, LocalDocumentStorage>();
+builder.Services.AddSingleton<IDocumentStorage, S3DocumentStorage>();
 builder.Services.AddSingleton<DocumentIntegrityService>();
 builder.Services.AddSingleton<EvidenceManifestBuilder>();
 
-var blockchainMode = builder.Configuration["Blockchain:Mode"] ?? "Simulated";
+var signingKey = builder.Configuration["Authentication:JwtSigningKey"];
+if (string.IsNullOrWhiteSpace(signingKey) || Encoding.UTF8.GetByteCount(signingKey) < 32)
+    throw new InvalidOperationException("Authentication:JwtSigningKey must be supplied externally and contain at least 32 bytes.");
 
-if (blockchainMode.Equals("Rpc", StringComparison.OrdinalIgnoreCase))
-    builder.Services.AddSingleton<IBlockchainGateway, NethereumBlockchainGateway>();
-else
-    builder.Services.AddSingleton<IBlockchainGateway, SimulatedBlockchainGateway>();
+var issuer = builder.Configuration["Authentication:Issuer"] ?? "DyxerSignature";
+var audience = builder.Configuration["Authentication:Audience"] ?? "DyxerSignature.Client";
+var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey));
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.MapInboundClaims = false;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = issuer,
+            ValidateAudience = true,
+            ValidAudience = audience,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = securityKey,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromSeconds(30)
+        };
+    });
+builder.Services.AddAuthorization();
+
+builder.Services.AddSingleton<IBlockchainGateway, StellarBlockchainGateway>();
 
 builder.Services.AddHostedService<BlockchainOutboxWorker>();
 
 var app = builder.Build();
 
 app.UseExceptionHandler();
-app.UseHttpsRedirection();
+app.UseAuthentication();
+app.UseAuthorization();
+app.UseSwagger();
+app.UseSwaggerUI();
 
-if (app.Environment.IsDevelopment())
+await using (var scope = app.Services.CreateAsyncScope())
 {
-    using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await db.Database.EnsureCreatedAsync();
+    await db.Database.MigrateAsync();
 }
 
 app.MapHealthChecks("/api/v1/health");

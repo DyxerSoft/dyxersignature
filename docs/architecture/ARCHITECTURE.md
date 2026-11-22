@@ -8,7 +8,7 @@ DyxerSignature se implementa como **monolito modular**:
 - un backend ASP.NET Core;
 - una base PostgreSQL;
 - un proceso desplegable para la API, incluyendo workers hospedados;
-- un smart contract Polygon independiente, invocado exclusivamente por el módulo Blockchain.
+- Stellar Testnet para registrar y verificar el SHA-256 de cada PDF definitivo.
 
 No se utilizarán microservicios en el MVP.
 
@@ -43,7 +43,7 @@ Outbox
 Blockchain Worker
         │
         ▼
-Polygon PoS
+Stellar Testnet
         │
         ▼
 Blockchain Receipt
@@ -53,10 +53,10 @@ Blockchain Receipt
 
 ```text
 Contract
-├─ Version 1 ─ SUPERSEDED ─ Polygon TX A
-├─ Version 2 ─ SUPERSEDED ─ Polygon TX B
-├─ Version 3 ─ SUPERSEDED ─ Polygon TX C
-└─ Version 4 ─ ACTIVE ───── Polygon TX D
+├─ Version 1 ─ SUPERSEDED ─ Stellar TX A
+├─ Version 2 ─ SUPERSEDED ─ Stellar TX B
+├─ Version 3 ─ SUPERSEDED ─ Stellar TX C
+└─ Version 4 ─ ACTIVE ───── Stellar TX D
 ```
 
 Una corrección jamás modifica una versión ya firmada. Crea una versión nueva del mismo contrato lógico.
@@ -89,7 +89,7 @@ Orquesta evidencia de cliente y la integración de firma digital corporativa. No
 Construye el Evidence Manifest, su canonicalización y su hash.
 
 ### Blockchain
-Nethereum, Polygon RPC, idempotencia, envío, confirmaciones, receipts y reintentos.
+Stellar SDK, Horizon Testnet, preparación persistida de sobre firmado, envío idempotente, confirmación, verificación y reintentos con Outbox.
 
 ### Audit
 Registro append-only de eventos operativos y de seguridad.
@@ -117,7 +117,7 @@ Tablas conceptuales iniciales:
 - `evidence_manifests`
 - `audit_events`
 - `outbox_messages`
-- `document_corrections`
+- `signature_events`
 
 ## Estado contractual vs. estado documental
 
@@ -138,4 +138,5 @@ Todas las integraciones externas se consumen detrás de interfaces:
 - `IDocumentStorage`
 - `IOtpGateway`
 
-El dominio no depende directamente de SDKs externos.
+El dominio no depende directamente de SDKs externos. La blockchain recibe únicamente hashes; archivos y datos de firmantes quedan fuera del ledger.
+

@@ -1,0 +1,246 @@
+analysis_agent:
+  rubric_id: analysis_agent
+  rubric_version: 1
+  criteria:
+    A01:
+      condition: Mapear cada requisito a un criterio verificable y su prueba.
+      evidence: Matriz de trazabilidad con identificadores de requisito, aceptación
+        y prueba.
+    A02:
+      condition: Distinguir al organizador principal y los cinco agentes existentes,
+        asignar los cuatro juicios de productores a Validation y la evaluación de
+        Validation a una autoridad externa.
+      evidence: Tabla de los seis participantes, sus entregas, autoridad y relaciones
+        de evaluación.
+    A03:
+      condition: Definir un registro persistido con campos, IDs únicos, decisiones
+        booleanas estrictas, evidencia, revisión e intento.
+      evidence: Contrato de estado, esquema de cada evaluación y las cinco rúbricas
+        canónicas versionadas.
+    A04:
+      condition: Definir cuándo 9/10 deriva a rework, cuándo 10/10 habilita avance
+        y cómo se trata una evaluación inválida.
+      evidence: Tabla de transiciones con cada condición, destino y efecto sobre el
+        gate.
+    A05:
+      condition: Asignar responsable y transición al rework y revalidar evidencia
+        afectada.
+      evidence: Tabla de responsables y estados, más reglas de invalidación y revalidación
+        de dependencias.
+    A06:
+      condition: Mantener topes de 3 análisis, 5 desarrollos, 3 revisiones de seguridad,
+        5 rondas QA y 12 iteraciones totales, y escalar antes de un despacho adicional.
+      evidence: Reglas de contadores y escalamiento con escenario verificable para
+        cada frontera.
+    A07:
+      condition: Definir una fuente de verdad, checkpoint y handoff recuperables e
+        historial de decisiones.
+      evidence: Contrato de estado con localización, contenido y autoridad del checkpoint,
+        handoff e historial.
+    A08:
+      condition: Cubrir interrupciones, reanudación sin duplicados, revisiones obsoletas
+        e inconsistencias de estado.
+      evidence: Reglas de recuperación y escenarios que observan cursor, efectos,
+        vigencia e integridad del estado.
+    A09:
+      condition: Conservar la compatibilidad de estados, comandos y flujos anteriores
+        y definir sus fronteras con el modo gestionado.
+      evidence: Inventario de estados y puntos de entrada legados, reglas de compatibilidad
+        y casos de regresión.
+    A10:
+      condition: Incluir casos positivos, negativos, de frontera y un E2E autorreferencial
+        de MA-001 con oráculo independiente.
+      evidence: Escenarios con entradas y observaciones esperadas y fuente explícita
+        del oráculo E2E.
+developer_agent:
+  rubric_id: developer_agent
+  rubric_version: 1
+  criteria:
+    D01:
+      condition: Integrar los cinco nombres existentes y al organizador principal
+        en el flujo habitual.
+      evidence: Diff que muestra las identidades y ejecución desde la entrada normal
+        que demuestra el despacho.
+    D02:
+      condition: Aplicar exactamente diez criterios canónicos versionados a cada rol.
+      evidence: Configuración o esquema de rúbricas y prueba que verifica exactamente
+        diez criterios por rol y versión.
+    D03:
+      condition: Validar ítems binarios estrictos, únicos y completos, junto con su
+        evidencia.
+      evidence: Código de validación y pruebas de entradas inválidas que cubren tipos,
+        duplicados, faltantes y evidencia.
+    D04:
+      condition: Autorizar el registro de cada evaluación únicamente al actor correspondiente
+        e impedir que el evaluador se autoapruebe.
+      evidence: Código de autorización y prueba de rechazo de la autoevaluación.
+    D05:
+      condition: Exigir cinco notas 10/10 vigentes y todos los gates aplicables satisfechos
+        para COMPLETED.
+      evidence: Prueba comparativa que contrasta casos con gates o notas pendientes
+        con el caso de cinco 10/10 y gates satisfechos.
+    D06:
+      condition: Enrutar el rework al responsable y conservar y revalidar la evidencia
+        afectada.
+      evidence: Traza anterior y posterior al rework que demuestra destino, evidencia
+        histórica y revalidación.
+    D07:
+      condition: Aplicar límites y escalamiento antes de efectuar un despacho fuera
+        del presupuesto.
+      evidence: Casos de frontera que muestran contadores, última reserva admisible
+        y despacho adicional rechazado.
+    D08:
+      condition: Persistir estado, checkpoint e historial recuperables después de
+        una interrupción.
+      evidence: Archivos de estado y prueba de persistencia e interrupción con comprobación
+        posterior a la recuperación.
+    D09:
+      condition: Reanudar sin duplicar efectos y bloquear checkpoints o revisiones
+        inválidos.
+      evidence: Prueba de relanzamiento que verifica deduplicación y rechazo de checkpoint
+        o revisión inválidos.
+    D10:
+      condition: Documentar la entrada normal y conservar los validadores y flujos
+        legados verificados por regresión.
+      evidence: Comandos, códigos de salida y diff que demuestran documentación y
+        regresión heredada.
+security_agent:
+  rubric_id: security_agent
+  rubric_version: 1
+  criteria:
+    S01:
+      condition: Vincular el alcance revisado al cambio y su procedencia.
+      evidence: Base, diff, revisión, autor y fecha de la revisión de seguridad.
+    S02:
+      condition: Modelar amenazas sobre estado, evidencia y ejecución.
+      evidence: Modelo de actores, activos y fronteras de confianza para esas tres
+        superficies.
+    S03:
+      condition: Verificar el control de roles y la aprobación independiente del evaluador.
+      evidence: Fuentes de los controles de rol y evidencia de cómo se resuelve la
+        aprobación por la autoridad externa.
+    S04:
+      condition: Verificar integridad y procedencia de datos y la respuesta ante una
+        revisión obsoleta.
+      evidence: Fuentes de los controles de integridad y procedencia y evidencia del
+        tratamiento de una revisión obsoleta.
+    S05:
+      condition: Verificar el esquema y el rechazo de entradas inválidas dentro del
+        alcance revisado.
+      evidence: Fuentes, esquema, alcance y resultados de fallas controladas.
+    S06:
+      condition: Verificar el confinamiento de rutas y escrituras.
+      evidence: Fuentes y alcance de las superficies de acceso y controles que confinan
+        rutas y permisos de escritura.
+    S07:
+      condition: Verificar la seguridad ante concurrencia, escrituras parciales y
+        reanudación.
+      evidence: Fuentes de los controles y resultados independientes sobre concurrencia,
+        escrituras parciales y reanudación.
+    S08:
+      condition: Revisar recursos, límites y posible exposición de secretos en evidencia.
+      evidence: Mapa de superficies y resultados para controles de recursos, límites
+        y secretos en evidencia.
+    S09:
+      condition: Documentar cada hallazgo confirmado o declarar de forma explícita
+        que la revisión produjo cero hallazgos.
+      evidence: Para cada hallazgo, ubicación, impacto, prerrequisitos, evidencia,
+        corrección y severidad. Con cero hallazgos, declaración explícita circunscrita
+        al alcance revisado.
+    S10:
+      condition: Emitir un gate trazable con cobertura y disposición de severidades.
+      evidence: Gate con matriz de cobertura, critical/high cerrados, medium remediados
+        o con riesgo aceptado explícitamente y low trazados.
+adversarial_test_agent:
+  rubric_id: adversarial_test_agent
+  rubric_version: 1
+  criteria:
+    Q01:
+      condition: Ejecutar las pruebas de forma independiente y registrar las condiciones
+        de ejecución.
+      evidence: Registro de ejecución con revisión, entorno, comandos y resultados.
+    Q02:
+      condition: Verificar la ruta positiva hasta COMPLETED con cinco 10/10 y gates
+        satisfechos.
+      evidence: Traza positiva con cinco calificaciones, estados de gates y veredicto
+        COMPLETED.
+    Q03:
+      condition: Verificar que 9/10 deriva a rework y luego a reevaluación.
+      evidence: Traza de 9/10, transición a rework y reevaluación de la nueva entrega.
+    Q04:
+      condition: Verificar que una evaluación faltante, duplicada, malformada u obsoleta
+        impide avanzar.
+      evidence: Casos parametrizados con resultados y estado para cada forma de evaluación
+        inválida.
+    Q05:
+      condition: Verificar que un gate pendiente o una autoevaluación impiden cerrar.
+      evidence: Casos aislados de gate pendiente y autoevaluación con sus resultados
+        y estados.
+    Q06:
+      condition: Verificar los límites exactos de cada rol y el total.
+      evidence: Casos de frontera que observan la última reserva permitida y el primer
+        despacho prohibido para cada límite.
+    Q07:
+      condition: Verificar reanudación sin duplicados y con historial íntegro.
+      evidence: Dos ejecuciones y comparación del estado persistido, efectos e historial.
+    Q08:
+      condition: Verificar la recuperación frente a checkpoint inconsistente, interrupción
+        y concurrencia.
+      evidence: Trazas y estado persistido de cada caso.
+    Q09:
+      condition: Verificar regresión de estados, bootstrap y validadores legados.
+      evidence: Comandos ejecutados y sus salidas para los tres ámbitos.
+    Q10:
+      condition: Ejecutar un E2E reproducible de MA-001 sin flaky conocido.
+      evidence: Bitácora, revisión y artefactos reproducibles, con resultados que
+        documenten la condición de flakiness.
+validation_agent:
+  rubric_id: validation_agent
+  rubric_version: 1
+  criteria:
+    E01:
+      condition: Demostrar autoría independiente y limitar su contribución a evaluar.
+      evidence: Diff y registro del actor que acrediten independencia y alcance exclusivo
+        de evaluación.
+    E02:
+      condition: Evaluar a los cuatro productores mediante sus rúbricas congeladas.
+      evidence: IDs y versión de las rúbricas y revisión evaluada para cada uno de
+        los cuatro productores.
+    E03:
+      condition: Emitir exactamente diez resultados por rol y calcular correctamente
+        las sumas.
+      evidence: Matriz de resultados que permita recontar diez ítems por rol y reproducir
+        cada total.
+    E04:
+      condition: Sustentar cada PASS con evidencia primaria localizable.
+      evidence: Localizadores exactos y comprobación reproducible del soporte primario
+        de cada PASS.
+    E05:
+      condition: Puntuar con cero cuando la evidencia falte o sea incierta e indicar
+        el motivo.
+      evidence: Auditoría de trazas con faltantes e incertidumbres, cada uno con resultado
+        cero y motivo.
+    E06:
+      condition: Cruzar la aceptación con contrato, diff y estado persistido.
+      evidence: Cruces visibles entre cada conclusión de aceptación y sus referencias
+        en contrato, diff y estado.
+    E07:
+      condition: Comprobar de forma independiente gates, disposición de defectos severos
+        y flakiness.
+      evidence: Referencias a las verificaciones independientes de gates, defectos
+        severos y flaky conocido.
+    E08:
+      condition: Asociar cada FAIL a una acción y un responsable, y derivar rework
+        o bloqueo.
+      evidence: Matriz de FAIL, acción correctiva, responsable y estado de rework
+        o bloqueo.
+    E09:
+      condition: Contrastar historial con límites, revisión vigente y obsolescencia.
+      evidence: Historial evaluado con resultados explícitos para contadores, vigencia
+        de revisión y obsolescencia.
+    E10:
+      condition: Emitir un dictamen coherente con DoD y evidencia, registrado sin
+        auto-firma.
+      evidence: Dictamen vinculado al DoD y evidencia, más registro con autoría y
+        confirmación externa.
+

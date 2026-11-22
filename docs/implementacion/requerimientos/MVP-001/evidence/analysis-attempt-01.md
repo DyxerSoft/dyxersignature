@@ -1,0 +1,62 @@
+# Análisis de MVP-001
+
+**Resultado: `ANALYSIS_READY`.** El criterio de entrega de Analysis es especificar un contrato verificable para Developer y Validation. La revisión corresponde al árbol de trabajo en desarrollo. El índice local conserva la referencia base `main` y la línea de entrega es `feat/stellar-hackathon-mvp`. Las observaciones de implementación son estáticas.
+
+## Fuentes y alcance
+
+- `specs/features/MVP-001.md` L3–L36 define el flujo, los diez criterios y los invariantes.
+- `project-manifest.yaml` L10–L38 fija React y Vite, ASP.NET Core, PostgreSQL, monolito modular, entorno local, sin multitenencia y seguridad obligatoria.
+- `handoff.yaml` L3–L13 registra MVP-001 en análisis y vincula el despacho actual.
+- `docs/adr/ADR-001-modular-monolith.md` L5–L13 fija un único despliegue y base relacional. `docs/adr/ADR-002-document-versioning-immutability.md` L9–L22 exige conservar el PDF y mantener una sola versión vigente tras confirmación.
+- `docs/implementacion/requerimientos/MVP-001/acceptance-criteria.yaml` L3–L23 agrupa las comprobaciones por evidencia operativa. La matriz siguiente conserva los diez criterios de la especificación y las exigencias de la solicitud.
+
+## Matriz de trazabilidad y oráculos
+
+| Criterio | Contrato observable | Prueba y resultado esperado |
+| --- | --- | --- |
+| AC1. Compose y custodia | Frontend, API, PostgreSQL y SeaweedFS. Dependencias listas antes de servir, bucket privado, dos volúmenes persistentes, secretos externos. | IT01 — `docker compose config` y arranque con entorno de prueba. API saludable. Registrar contrato y PDF, reiniciar servicios sin borrar volúmenes, comprobar ambos. Leer directamente el objeto sin firma devuelve denegación. |
+| AC2. Persistencia, migraciones y auditoría | Bases nuevas creadas por migración. Operaciones registran correlación, actor, tipo, contrato, versión y hora. Firma definitiva confirma versión, firma, auditoría y outbox en una transacción de base de datos. | IT02 — verificar `__EFMigrationsHistory`, reinicio idempotente, consistencia de referencias y rollback ante fallo de inserción. En borrado lógico auditar y conservar filas y bytes. |
+| AC3. REST, auth, validaciones, OpenAPI y CI | API versionada `/api/v1`, JWT verificable, recursos descritos por OpenAPI y errores de validación reproducibles. Frontend y backend con build, pruebas y Docker en workflows separados. | IT03 — petición protegida anónima o token inválido → 401, no autorizado según el alcance → 403, válido → resultado esperado. Referencia duplicada → 409, PDF inválido y datos de firmante inválidos → 400. Descargar OpenAPI y adjuntar los dos enlaces de CI con pruebas ejecutadas. |
+| AC4. Negocio, histórico y comparación | Contratos creados y corregidos. Confirmar revisión de los bytes por firmar. Cada definitivo conserva SHA-256, enlace previo, motivo, custodia y firmante. Las correcciones crean nueva versión y el PDF anterior se mantiene. Metadatos y hashes comparables. | IT04 — crear V1, revisar y firmar, corregir con V2, comprobar ambos hashes con una herramienta independiente, comparar metadatos, inspeccionar timeline y descargar V1. Dos escrituras concurrentes deben producir orden estable o conflicto de estado documentado, sin sobrescribir bytes. |
+| AC5. Anclaje real, reintentos y estados | HTTP acepta el definitivo y outbox durable envía solamente el SHA-256 y una clave derivada a Stellar Testnet. Guardar estado, reintentos y referencia de transacción, incluso tras recuperar una respuesta perdida. | IT05 — simular timeout en un doble local de gateway, observar respuesta HTTP y outbox pendiente con reintento. Recuperar éxito tras reinicio sin segundo anclaje lógico. Con credenciales de Testnet dedicadas y un PDF sintético, comprobar transacción, red, cuenta, dato, ledger y bytes mediante Horizon. |
+| AC6. Verificación | Verificación relaciona bytes efectivamente almacenados, hash firmado y dato de la cuenta de anclaje. Los estados pendiente, no coincide, no encontrado y servicio no disponible se distinguen de confirmado. | IT06 — caso confirmado, cambio del objeto en un fixture aislado, hash aún no anclado y dependencia indisponible. Solo el primero debe declarar verificado. No etiquetar como Stellar el resultado de un adaptador de prueba. |
+| AC7. Descarga autorizada | Política de acceso previa a emitir un enlace temporal para una versión permitida. La URL funciona durante su vigencia y no se almacena en auditoría ni se registra completa en logs. | IT07 — no emitir enlace para sesión anónima o acceso denegado. Usar una URL válida y su caducidad configurada, comparar los bytes descargados con el SHA-256 esperado. El contrato borrado lógicamente conserva su PDF y deja de estar disponible desde el flujo ordinario. |
+| AC8. UI y métricas | Preservar el mockup y sus componentes. Crear, corregir, revisar, firmar, seguir el anclaje, verificar y descargar desde la interfaz. Totales y promedio proceden de PostgreSQL. | IT08 — demo de navegador con V1 y V2. Verificar total, distribución de estados y firmas por contrato con un conjunto conocido. Incluir contratos sin firmas en el denominador si el indicador se denomina promedio de todos los contratos visibles. |
+| AC9. Carga y capacidad | Medir 100 usuarios concurrentes y objetivo de 7–10 contratos/s. Separar contratos aceptados por API y confirmaciones Stellar. | IT09 — carga reproducible con usuarios y datos sintéticos, registrar commit, duración, configuración, tasa ofrecida y exitosa, p95, errores, backlog y drenaje, reintentos y confirmaciones/s observadas. Medir dependencia real en Testnet y distinguir su límite del tiempo del endpoint. |
+| AC10. Demo, informes y rama | Documentación de API y demo con fase, commit, archivos, prueba, resultado, bloqueo y próxima fase. Código y evidencia versionados en la rama acordada. | IT10 — reproducir desde checkout limpio, comprobar enlaces a commits/CI y hashes públicos de Testnet. Confirmar `main` en su SHA inicial y contrastar pendientes con los oráculos de esta tabla. |
+
+## Datos, estados e invariantes para implementación
+
+- Contrato lógico identifica el histórico. El identificador de versión y número por contrato son persistentes. `PreviousVersionId` representa el predecesor documental. La revisión debe referir al digest exacto que se firma o registrar cómo se vincula a la versión definitivamente firmada. La firma debe distinguir identidad autenticada del operador y datos declarados del firmante si se recibe un PDF ya firmado.
+- El PDF definitivo y su hash, almacenamiento y datos de firma se escriben una vez. El estado posterior permite confirmación, vigencia y sustitución. Conservar motivo de la corrección que produce una versión y, si aplica, motivo de su sustitución sin perder el primero.
+- Solo la confirmación de una versión superior la vuelve vigente. Una confirmación tardía de una versión anterior permanece visible en el histórico. Verificar este orden y la unicidad bajo reintento y concurrencia.
+- Outbox deduplica la operación local por versión. Stellar deduplica el efecto por hash. El mismo PDF puede aparecer bajo múltiples registros locales que referencian la misma transacción. La clave de prueba de red es independiente de la referencia de negocio y de la información del firmante.
+- El borrado lógico oculta el contrato del flujo ordinario completo. Historial de auditoría de los borrados sigue la política de acceso definida para el entorno. El sistema preserva el documento y la integridad referencial.
+- El modelo está declarado sin multitenencia. Documentar alcance de cada sesión y de la descarga. Si la sesión de demo emite tokens sin identidad real, acotarla al entorno local aislado y no presentarla como autorización individual del firmante.
+- Logs estructurados correlacionan recepción y anclaje. Incluyen identificador de entidad, estado y duración, sin semilla, URL prefirmada, credenciales S3 ni datos de firmantes en logs del worker.
+
+## Hechos y riesgos del árbol inspeccionado
+
+- Se observan servicios y volúmenes en `docker-compose.yml` L1–L50, L52–L92, migración invocada en `backend/src/DyxerSignature.Api/Program.cs` L78–L85 y tablas en `backend/src/DyxerSignature.Api/Infrastructure/Persistence/Migrations/202611220001_InitialMvp.cs` L13–L105. La fase 1 registra falta de Docker y SDK en el entorno local. CI frontend compiló; backend compiló y falló la imagen (`NETSDK1064`). La inicialización de PostgreSQL, S3 y el navegador queda por observar en runtime.
+- La ruta de carga `backend/src/DyxerSignature.Api/Modules/Contracts/Api/ContractsController.cs` L210–L239 recibe ya firmado y valida cabecera. Separar la evidencia de revisión previa, aceptación y custodia. `backend/src/DyxerSignature.Api/Modules/Contracts/Domain/ContractDocumentVersion.cs` L35–L52 solo bloquea reescritura en ciertos estados y debe asegurar inmutabilidad desde la firma.
+- La migración inicial L38–L46 impide dos versiones activas y además impone unicidad global de hash. Esto puede rechazar el mismo PDF antes de que la deduplicación de Stellar lo resuelva. Gestionar los fallos parciales de almacenamiento/SQL sin sobrescribir ni perder custodia.
+- `backend/src/DyxerSignature.Api/Infrastructure/Outbox/BlockchainOutboxWorker.cs` L29–L43 selecciona un trabajo pendiente sin reserva persistida en la revisión observada. L81–L116 activa tras respuesta de gateway. Un reintento fuera de orden puede invertir la vigencia; los fallos transaccionales deben persistir el reintento sin volver a guardar cambios fallidos.
+- `backend/src/DyxerSignature.Api/Program.cs` L61–L68 elige gateway simulado cuando `Blockchain:Mode` es `StellarTestnet` con el código observado. Tratar esta fase como pendiente hasta desplegar el adaptador y registrar una transacción pública comprobable.
+- `backend/src/DyxerSignature.Api/Modules/Documents/Api/DocumentsController.cs` L23–L59 implementa descarga autenticada y audita emisión. L62–L83 y L114–L131 consultan versiones sin el filtro ordinario de borrado lógico en la revisión inspeccionada. `frontend/src/services/api/client.ts` L7–L16 aún no adjunta bearer y `frontend/src/app/App.tsx` L3–L8 conserva texto de Polygon.
+- Sin un runtime Compose y una cuenta Stellar Testnet financiada, no se puede obtener la evidencia operativa de los oráculos IT01, IT05, IT08 e IT09. El diseño y las pruebas que se puedan ejecutar en CI pueden avanzar desde este análisis.
+
+## Flujo de evaluación y recuperación
+
+| Actor | Entrega y autoridad |
+| --- | --- |
+| Organizador | Reserva, vincula recibos, persiste decisiones y evalúa de forma independiente a Validation. |
+| Analysis | Contrato, invariantes y plan de prueba. Validation evalúa su entrega. |
+| Developer | Implementación y fuentes completas. Validation evalúa su entrega. |
+| Security | Cobertura, hallazgos y gate. Validation evalúa su entrega. |
+| Adversarial Test | Pruebas negativas y evidencia reproducible. Validation evalúa su entrega. |
+| Validation | Evalúa a los cuatro productores y propone el único veredicto final. El organizador evalúa su entrega y comprueba gates. |
+
+`loop-state.yaml` conserva IDs de despacho, sesión, intento y revisión, entregas, decisiones, historial y checkpoint. `handoff.yaml` proyecta siguiente rol y checkpoint. El esquema y las cinco rúbricas canónicas están en `config/requirement-rubrics-v1.yaml`. Cada evaluación requiere diez booleanos estrictos con referencias localizables y huellas SHA-256. Un 10/10 permite avanzar según los gates. Un criterio fallido lleva a rework del propietario afectado y revalidación de evidencia dependiente. Una evaluación inválida se rechaza y conserva trazabilidad de reintento. Los límites 3/5/3/5 y 12 deben detener despachos adicionales y elevar el estado de revisión correspondiente.
+
+Pruebas del arnés: comprobar una entrega legítima, evaluación incompleta o duplicada que se rechaza, fronteras de ciclos por rol y total, pausa y reanudación con mismo cursor, resultados duplicados o tardíos, cambio de huella que invalida solo dependientes, estado alterado que no avanza y compatibilidad de `nuevo_requerimiento.py`, comandos gestionados y validadores legados. El contrato de despacho, registro, rework y recuperación está versionado en `skills/orquestacion/requirement-loop-orchestrator.md` L7–L59. El criterio A10 en `config/requirement-rubrics-v1.yaml` L50–L54 exige también un E2E autorreferencial de MA-001. Conservar evidencia independiente de ese escenario si se usa para evaluación; una prueba de MVP-001 y un resultado histórico de MA-001 son evidencias distintas.
+

@@ -1,0 +1,38 @@
+schema_version: 1
+project:
+  id: dyxersignature
+  name: Sistema Signature
+  slug: dyxersignature
+  type: web-application
+  status: in-development
+  repository: DyxerSoft/dyxersignature
+  product: Firma, evidencia y trazabilidad documental para Grupo Paz
+technology:
+  frontend:
+    framework: react
+    runtime: vite
+  backend:
+    platform: dotnet
+    framework: aspnet-core
+  data:
+    primary: postgresql
+deployment:
+  current_target: local
+  cloud_provider: none
+architecture:
+  style: modular-monolith
+  tenancy: none
+quality_gates:
+  bootstrap_completed: true
+  architecture_review_passed: true
+  security_review_required: true
+workflow:
+  current_feature: MVP-001
+  current_stage: in-development
+  current_skill: requirement-loop-orchestrator
+  agents:
+    analysis: analysis_agent
+    development: developer_agent
+    security: security_agent
+    testing: adversarial_test_agent
+    validation: validation_agent

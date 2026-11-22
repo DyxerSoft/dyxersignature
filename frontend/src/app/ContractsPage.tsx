@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getContracts, type ContractListItem } from "../features/contracts/api";
 import { ContractWorkbench } from "../features/contracts/ContractWorkbench";
+import { StellarMvp } from "../features/stellar/StellarMvp";
 import { Icon } from "./Icon";
 import { PageFooter } from "./DashboardPage";
 
@@ -16,14 +17,14 @@ const statusNames: Record<string, string> = {
 
 export function ContractsPage({
   onNavigate,
-  initialView = "workbench",
+  initialView = "stellar",
   initialContractId = ""
 }: {
   onNavigate: (page: string) => void;
-  initialView?: "workbench" | "list";
+  initialView?: "workbench" | "list" | "stellar";
   initialContractId?: string;
 }) {
-  const [activeTab, setActiveTab] = useState<"workbench" | "list">(initialView);
+  const [activeTab, setActiveTab] = useState<"workbench" | "list" | "stellar">(initialView);
   const [selectedContractId, setSelectedContractId] = useState(initialContractId);
   const [contracts, setContracts] = useState<ContractListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -115,12 +116,26 @@ export function ContractsPage({
           <span>Listado de Contratos</span>
           {contracts.length > 0 && <b className="nav-count">{contracts.length}</b>}
         </button>
+
+        <button
+          role="tab"
+          type="button"
+          aria-selected={activeTab === "stellar"}
+          className={activeTab === "stellar" ? "status-pill" : "button-secondary"}
+          style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "0.5rem" }}
+          onClick={() => setActiveTab("stellar")}
+        >
+          <Icon name="shield" size={16} />
+          Stellar Testnet · MVP
+        </button>
       </div>
 
       {activeTab === "workbench" ? (
         <div role="tabpanel" id="panel-workbench" aria-labelledby="tab-view-workbench">
           <ContractWorkbench initialContractId={selectedContractId} />
         </div>
+      ) : activeTab === "stellar" ? (
+        <div role="tabpanel" id="panel-stellar"><StellarMvp /></div>
       ) : (
         <div role="tabpanel" id="panel-list" aria-labelledby="tab-view-list">
           <section className="panel contract-index">

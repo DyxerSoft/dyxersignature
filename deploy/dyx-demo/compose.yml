@@ -1,0 +1,97 @@
+# Preview hackaton en dyx-demo. No puertos de host: usa Caddy existente en dyx-edge.
+services:
+  postgres:
+    image: postgres:17.6
+    environment:
+      POSTGRES_DB: dyxersignature
+      POSTGRES_USER: dyxersignature
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes:
+      - ${SIGNATURE_DATA_ROOT:?Set SIGNATURE_DATA_ROOT}/postgres:/var/lib/postgresql/data
+    networks: [backend]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dyxersignature -d dyxersignature"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.54
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        printf '{"identities":[{"name":"signature-admin","credentials":[{"accessKey":"%s","secretKey":"%s"}],"actions":["Admin"]},{"name":"signature-api","credentials":[{"accessKey":"%s","secretKey":"%s"}],"actions":["Read","Write","List"]}]}' "$$SEAWEEDFS_ADMIN_ACCESS_KEY" "$$SEAWEEDFS_ADMIN_SECRET_KEY" "$$SEAWEEDFS_ACCESS_KEY" "$$SEAWEEDFS_SECRET_KEY" > /tmp/s3.json
+        exec weed server -dir=/data -s3 -s3.config=/tmp/s3.json
+    environment:
+      SEAWEEDFS_ADMIN_ACCESS_KEY: ${S3_ADMIN_ACCESS_KEY:?Set S3_ADMIN_ACCESS_KEY}
+      SEAWEEDFS_ADMIN_SECRET_KEY: ${S3_ADMIN_SECRET_KEY:?Set S3_ADMIN_SECRET_KEY}
+      SEAWEEDFS_ACCESS_KEY: ${S3_ACCESS_KEY:?Set S3_ACCESS_KEY}
+      SEAWEEDFS_SECRET_KEY: ${S3_SECRET_KEY:?Set S3_SECRET_KEY}
+    volumes:
+      - ${SIGNATURE_DATA_ROOT:?Set SIGNATURE_DATA_ROOT}/seaweedfs:/data
+    networks:
+      backend: {}
+      edge:
+        aliases: [signature-seaweedfs]
+
+  s3-init:
+    image: amazon/aws-cli:2.42.1
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        until aws s3api list-buckets --endpoint-url http://seaweedfs:8333 >/dev/null 2>&1; do sleep 2; done
+        aws s3api head-bucket --bucket dyxersignature --endpoint-url http://seaweedfs:8333 >/dev/null 2>&1 || aws s3api create-bucket --bucket dyxersignature --endpoint-url http://seaweedfs:8333
+    environment:
+      AWS_ACCESS_KEY_ID: ${S3_ADMIN_ACCESS_KEY:?Set S3_ADMIN_ACCESS_KEY}
+      AWS_SECRET_ACCESS_KEY: ${S3_ADMIN_SECRET_KEY:?Set S3_ADMIN_SECRET_KEY}
+      AWS_DEFAULT_REGION: us-east-1
+    networks: [backend]
+    depends_on: [seaweedfs]
+
+  api:
+    build:
+      context: ../..
+      dockerfile: backend/Dockerfile
+    # Este perfil Development está permitido SOLO detrás de autenticación Caddy;
+    # NO es configuración adecuada para un despliegue productivo abierto.
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: "8080"
+      ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=dyxersignature;Username=dyxersignature;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}"
+      Authentication__JwtSigningKey: ${AUTH_JWT_SIGNING_KEY:?Set AUTH_JWT_SIGNING_KEY}
+      Authentication__Issuer: DyxerSignature
+      Authentication__Audience: DyxerSignature.Client
+      Storage__ServiceUrl: http://seaweedfs:8333
+      Storage__PublicServiceUrl: ${S3_PUBLIC_URL:?Set S3_PUBLIC_URL}
+      Storage__Region: us-east-1
+      Storage__BucketName: dyxersignature
+      Storage__AccessKey: ${S3_ACCESS_KEY:?Set S3_ACCESS_KEY}
+      Storage__SecretKey: ${S3_SECRET_KEY:?Set S3_SECRET_KEY}
+      Storage__PresignedUrlExpirationMinutes: "5"
+      Stellar__Network: Testnet
+      Stellar__HorizonUrl: https://horizon-testnet.stellar.org
+      Stellar__PublicKey: ${STELLAR_PUBLIC_KEY:-}
+      Stellar__SecretSeed: ${STELLAR_SECRET_SEED:-}
+    networks: [backend]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      s3-init:
+        condition: service_completed_successfully
+
+  frontend:
+    build:
+      context: ../../frontend
+      dockerfile: Dockerfile
+    networks:
+      backend: {}
+      edge:
+        aliases: [signature-frontend]
+    depends_on: [api]
+
+networks:
+  backend:
+    driver: bridge
+  edge:
+    external: true
+    name: dyx-edge

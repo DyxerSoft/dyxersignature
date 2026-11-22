@@ -11,12 +11,19 @@
 # Runtime data
 .data/
 backend/.data/
+artifacts/
 
 # Env / secrets
 .env
 .env.*
 !.env.example
 appsettings.*.local.json
+
+# Python requirement-loop runtime
+__pycache__/
+*.py[cod]
+.requirement-handoff.lock
+docs/implementacion/requerimientos/*/.loop-state.lock
 
 # IDE
 .vscode/
@@ -30,3 +37,4 @@ Thumbs.db
 backend/blockchain/cache/
 backend/blockchain/out/
 backend/blockchain/broadcast/
+

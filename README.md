@@ -179,3 +179,15 @@ La medición de throughput del flujo de negocio incluye creación, carga, revisi
 ---
 
 **DyxerSignature — Documentos confiables, versiones trazables y evidencia verificable.**
+
+## Evidencia de validación del MVP — noviembre de 2026
+
+Las siguientes pruebas se ejecutaron **en GitHub Actions, no en el servidor de demostración**:
+
+- **Carga**: 100 usuarios virtuales, 10.486 recorridos en 60,31 segundos (173,873 flujos/s), p95 de 840 ms y 0 errores. Incluye API, almacenamiento S3 y Outbox, **no** confirmación blockchain por cada flujo. [Evidencia de carga](https://github.com/DyxerSoft/dyxersignature/actions/runs/45042238308).
+- **Stellar Testnet**: flujo API → PostgreSQL/SeaweedFS → Outbox → Stellar → verificación SHA-256 → descarga autorizada completado. Dos versiones confirmadas, descarga HTTP 200 y Dashboard validado. [Ejecución E2E](https://github.com/DyxerSoft/dyxersignature/actions/runs/45045085597).
+- **Build y pruebas**: backend Restore/Build/Tests/Docker aprobados en [run 45045085592](https://github.com/DyxerSoft/dyxersignature/actions/runs/45045085592). La muestra separada de tres operaciones secuenciales de Testnet registró 0,214 transacciones verificadas/s; no representa el throughput máximo de Stellar.
+
+El MVP integra un módulo de demostración Stellar junto con la interfaz administrativa y el módulo OCR/BFF; la **compatibilidad funcional de OCR con la nueva API y la configuración segura del despliegue público se validan por separado**. No equiparar compilación con aceptación end-to-end del frontend.
+
+Documentación complementaria: [Informe final y límites](docs/implementation/phase-reports/phase-05.md) y [Guía de demostración](docs/implementation/demo-guide.md).

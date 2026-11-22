@@ -1,0 +1,10 @@
+requirement: MVP-001
+contracts:
+  api:
+    base_path: /api/v1
+    auth: bearer-jwt
+    openapi: /swagger
+  data:
+    database: postgresql
+    documents: seaweedfs-s3-private
+    blockchain: stellar-testnet

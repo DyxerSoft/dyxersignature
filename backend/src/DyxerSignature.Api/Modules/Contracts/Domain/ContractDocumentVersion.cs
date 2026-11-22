@@ -7,7 +7,8 @@ public sealed class ContractDocumentVersion
     public ContractDocumentVersion(
         Guid contractId,
         int versionNumber,
-        Guid? previousVersionId = null)
+        Guid? previousVersionId = null,
+        string? correctionReason = null)
     {
         if (versionNumber <= 0)
             throw new ArgumentOutOfRangeException(nameof(versionNumber));
@@ -16,6 +17,9 @@ public sealed class ContractDocumentVersion
         ContractId = contractId;
         VersionNumber = versionNumber;
         PreviousVersionId = previousVersionId;
+        if (correctionReason?.Length > 500)
+            throw new ArgumentOutOfRangeException(nameof(correctionReason));
+        CorrectionReason = string.IsNullOrWhiteSpace(correctionReason) ? null : correctionReason.Trim();
         Status = DocumentVersionStatus.Draft;
         CreatedAtUtc = DateTimeOffset.UtcNow;
     }
@@ -32,19 +36,43 @@ public sealed class ContractDocumentVersion
     public DateTimeOffset? SignedAtUtc { get; private set; }
     public DateTimeOffset? SupersededAtUtc { get; private set; }
 
-    public void MarkSigned(string storageKey, string documentHash, DateTimeOffset signedAtUtc)
+    public void AttachDraftDocument(string storageKey, string documentHash)
     {
-        if (Status is DocumentVersionStatus.Active or DocumentVersionStatus.Superseded)
-            throw new InvalidOperationException("An immutable version cannot be re-signed.");
+        EnsureStatus(DocumentVersionStatus.Draft);
+        if (StorageKey is not null || DocumentHash is not null)
+            throw new InvalidOperationException("A document version can only be uploaded once.");
 
         if (string.IsNullOrWhiteSpace(storageKey))
             throw new ArgumentException("Storage key is required.", nameof(storageKey));
 
-        if (documentHash.Length != 64)
+        if (!IsSha256(documentHash))
             throw new ArgumentException("SHA-256 must contain 64 hexadecimal characters.", nameof(documentHash));
 
         StorageKey = storageKey;
         DocumentHash = documentHash.ToLowerInvariant();
+    }
+
+    public void AcceptReview(string expectedDocumentHash)
+    {
+        EnsureStatus(DocumentVersionStatus.Draft);
+        if (StorageKey is null || DocumentHash is null ||
+            !StringComparer.OrdinalIgnoreCase.Equals(DocumentHash, expectedDocumentHash))
+        {
+            throw new InvalidOperationException("The reviewed hash does not match the uploaded immutable document.");
+        }
+
+        Status = DocumentVersionStatus.ClientAccepted;
+    }
+
+    public void MarkSigned(string expectedDocumentHash, DateTimeOffset signedAtUtc)
+    {
+        EnsureStatus(DocumentVersionStatus.ClientAccepted);
+        if (DocumentHash is null ||
+            !StringComparer.OrdinalIgnoreCase.Equals(DocumentHash, expectedDocumentHash))
+        {
+            throw new InvalidOperationException("The signed hash does not match the reviewed immutable document.");
+        }
+
         SignedAtUtc = signedAtUtc;
         Status = DocumentVersionStatus.Signed;
     }
@@ -77,17 +105,15 @@ public sealed class ContractDocumentVersion
         Status = DocumentVersionStatus.Active;
     }
 
-    public void Supersede(string reason)
+    public void Supersede()
     {
         EnsureStatus(DocumentVersionStatus.Active);
-
-        CorrectionReason = string.IsNullOrWhiteSpace(reason)
-            ? "Replaced by a newer confirmed version."
-            : reason.Trim();
-
         SupersededAtUtc = DateTimeOffset.UtcNow;
         Status = DocumentVersionStatus.Superseded;
     }
+
+    private static bool IsSha256(string? hash)
+        => hash is { Length: 64 } && hash.All(Uri.IsHexDigit);
 
     private void EnsureStatus(DocumentVersionStatus expected)
     {
@@ -95,3 +121,4 @@ public sealed class ContractDocumentVersion
             throw new InvalidOperationException($"Expected status {expected} but found {Status}.");
     }
 }
+

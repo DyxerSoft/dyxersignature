@@ -1,0 +1,23 @@
+.stellar-mvp { display: grid; gap: 1.4rem; padding: 1.25rem 0; max-width: 1320px; }
+.stellar-mvp__header { display: flex; align-items: start; justify-content: space-between; gap: 1.5rem; }
+.stellar-mvp__header h2 { margin: .45rem 0; font-size: 1.45rem; }
+.stellar-mvp__header p { color: var(--color-text-muted); }
+.stellar-mvp .dashboard { display: grid; gap: .8rem; }
+.stellar-mvp .metric-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(175px,1fr)); gap: .75rem; }
+.stellar-mvp .metric-card { background: white; border: 1px solid var(--color-border-subtle); border-radius: var(--radius-md); padding: 1rem; display: grid; gap: .4rem; box-shadow: var(--shadow-sm); }
+.stellar-mvp .metric-card strong { font-size: 1.6rem; }
+.stellar-mvp .metric-card small { color: var(--color-text-muted); }
+.stellar-mvp .workbench { background: white; border: 1px solid var(--color-border-subtle); border-radius: var(--radius-md); padding: 1.25rem; display: grid; gap: 1.1rem; }
+.stellar-mvp .section-heading { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+.stellar-mvp .contract-create-form,.stellar-mvp .upload-form,.stellar-mvp .signer-form,.stellar-mvp .compare-form { display: grid; gap: .75rem; }
+.stellar-mvp .form-row { display: grid; grid-template-columns: repeat(auto-fit,minmax(200px,1fr)); gap: .75rem; }
+.stellar-mvp label { display: grid; gap: .35rem; }
+.stellar-mvp input,.stellar-mvp select { min-width: 0; width: 100%; padding: .65rem; border: 1px solid var(--color-border); border-radius: var(--radius-sm); }
+.stellar-mvp .action-row,.stellar-mvp .history-tools { display: flex; gap: .65rem; flex-wrap: wrap; align-items: center; }
+.stellar-mvp .version-list { display: grid; gap: 1rem; }
+.stellar-mvp .version-card { border: 1px solid var(--color-border-subtle); padding: 1rem; border-radius: var(--radius-md); }
+.stellar-mvp .version-card__header { display: flex; justify-content: space-between; flex-wrap: wrap; gap: .5rem; }
+.stellar-mvp .muted-copy { color: var(--color-text-muted); }
+.stellar-mvp .error-message { color: #b42318; padding: .6rem; border: 1px solid #fecdca; border-radius: .5rem; }
+.stellar-mvp .success-message { color: #027a48; }
+@media(max-width:720px){ .stellar-mvp__header,.stellar-mvp .section-heading { flex-direction: column; align-items: start;} }

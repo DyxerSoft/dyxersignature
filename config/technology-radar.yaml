@@ -1,0 +1,74 @@
+schema_version: 1
+policy:
+  statuses:
+  - preferred
+  - supported
+  - evaluate
+  - discouraged
+  - prohibited
+  evaluate_requires_adr: true
+  discouraged_requires_human_review: true
+  prohibited_selection_allowed: false
+frontend:
+  react:
+    status: preferred
+    notes: SPA y aplicaciones autenticadas.
+  nextjs:
+    status: preferred
+    notes: SSR/SSG/hybrid y aplicaciones React full-stack.
+  angular:
+    status: supported
+    notes: Aplicaciones empresariales con conventions fuertes.
+  vue:
+    status: evaluate
+backend:
+  dotnet:
+    status: preferred
+    frameworks:
+    - aspnet-core
+  python:
+    status: preferred
+    frameworks:
+    - fastapi
+    - django
+    - flask
+  nodejs:
+    status: evaluate
+database:
+  postgresql:
+    status: preferred
+  sqlserver:
+    status: supported
+  mysql:
+    status: supported
+  sqlite:
+    status: supported
+    scope: local/small
+  mongodb:
+    status: evaluate
+infrastructure:
+  docker-compose:
+    status: preferred
+  caddy:
+    status: preferred
+  nginx:
+    status: supported
+  traefik:
+    status: supported
+  kubernetes:
+    status: evaluate
+    requires_driver: true
+auxiliary:
+  redis:
+    status: supported
+    requires_driver: true
+  rabbitmq:
+    status: supported
+    requires_driver: true
+  kafka:
+    status: evaluate
+    requires_driver: true
+  elasticsearch:
+    status: evaluate
+    requires_driver: true
+
