@@ -65,13 +65,33 @@ async def main():
             assert raw.startswith(b"%PDF-")
             assert b"startxref" in raw[-4096:] and b"%%EOF" in raw[-4096:]
             report["download"]="PDF delivered by JWT-protected API; valid header, xref and EOF"
+            # Chromium's embedded PDF viewer may abort navigations for blob:
+            # URLs even when the native preview succeeds. Capture the generated
+            # blob in the originating React window instead of waiting for a
+            # navigation event that the PDF plugin may intercept.
+            await page.evaluate("""() => {
+                window.__pdfPreview = null;
+                const original = URL.createObjectURL.bind(URL);
+                URL.createObjectURL = blob => {
+                    const url = original(blob);
+                    window.__pdfPreview = {url, size:blob.size, type:blob.type};
+                    return url;
+                };
+            }""")
             async with page.expect_popup(timeout=45000) as popup_info:
                 await row.get_by_role("button",name="Ver").click()
             popup=await popup_info.value
-            await popup.wait_for_url("blob:*",timeout=45000)
-            assert popup.url.startswith("blob:"), "PDF preview was not served as a browser Blob"
-            await popup.close()
-            report["preview"]="Opened actual PDF in a separate browser tab"
+            await page.wait_for_function(
+                "window.__pdfPreview && window.__pdfPreview.url.startsWith('blob:')",
+                timeout=45000)
+            evidence=await page.evaluate("window.__pdfPreview")
+            assert evidence["type"]=="application/pdf" and evidence["size"]>200
+            assert await page.locator(".document-workspace [role=alert]").count()==0
+            try:
+                await popup.close()
+            except Exception:
+                pass
+            report["preview"]="A real PDF Blob was created and a browser preview tab opened"
             # Navigating through React reloads metrics, which must include this final UI form write.
             await page.locator(".side-nav .nav-item").filter(has_text="Dashboard").first.click()
             await page.locator(".stats-grid .stat-card").first.wait_for()
