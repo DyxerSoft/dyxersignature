@@ -82,6 +82,10 @@ jobs:
         run: |
           mkdir -p artifacts
           api_container="$(docker compose ps -q api)"
+          if [ -z "$api_container" ]; then
+            echo "API container is not running; cannot join its Compose network." >&2
+            exit 1
+          fi
           docker run --rm --network "container:${api_container}" --user "$(id -u):$(id -g)" \
             --workdir /artifacts \
             -e BASE_URL=http://127.0.0.1:8080 \
