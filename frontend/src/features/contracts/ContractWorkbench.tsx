@@ -47,6 +47,35 @@ export function ContractWorkbench() {
     return () => window.clearInterval(timer);
   }, [contractId]);
 
+  useEffect(() => {
+    if (!selectedSignatureForZoom) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setSelectedSignatureForZoom(null);
+      }
+    };
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [selectedSignatureForZoom]);
+
+  useEffect(() => {
+    const handleGlobalEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !selectedSignatureForZoom && viewerDocUrl) {
+        setViewerDocUrl(null);
+      }
+    };
+    window.addEventListener("keydown", handleGlobalEscape);
+    return () => window.removeEventListener("keydown", handleGlobalEscape);
+  }, [selectedSignatureForZoom, viewerDocUrl]);
+
   async function handleCreate(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
@@ -356,11 +385,20 @@ export function ContractWorkbench() {
 
       {/* Modal Lightbox de Zoom para Firma Recortada */}
       {selectedSignatureForZoom && digitizationJob && (
-        <div className="lightbox-backdrop" onClick={() => setSelectedSignatureForZoom(null)}>
-          <div className="lightbox-content" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="lightbox-backdrop"
+          onClick={() => setSelectedSignatureForZoom(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="signature-modal-title"
+            className="lightbox-content"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="lightbox-header">
               <div>
-                <h3 style={{ margin: 0, fontSize: "1.1rem" }}>
+                <h3 id="signature-modal-title" style={{ margin: 0, fontSize: "1.1rem" }}>
                   Firma Manuscrita Detectada
                 </h3>
                 <small style={{ color: "var(--color-text-muted)" }}>
@@ -369,8 +407,10 @@ export function ContractWorkbench() {
               </div>
               <button
                 type="button"
+                autoFocus
+                aria-label="Cerrar modal de firma"
                 className="button-secondary"
-                style={{ cursor: "pointer", fontSize: "0.85rem", padding: "0.25rem 0.6rem" }}
+                style={{ cursor: "pointer", fontSize: "0.85rem", padding: "0.35rem 0.75rem" }}
                 onClick={() => setSelectedSignatureForZoom(null)}
               >
                 Cerrar
