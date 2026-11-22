@@ -9,7 +9,7 @@
 - Cloudflared: servicio systemd con túnel gestionado por Cloudflare Zero Trust; su host público debe dirigir a **HTTP `http://localhost:8080`** (no HTTPS interno).
 - Directorio de esta aplicación: `/srv/docker-data/stacks/dyxersignature/repo`; secretos fuera de Git en `/srv/docker-data/stacks/dyxersignature/secrets/staging.env`.
 
-La aplicación no publica puertos de host; Caddy resuelve `signature-frontend:80` y `signature-seaweedfs:8333` en la red externa `dyx-edge`. API, base de datos y demás servicios se ejecutan en una red exclusiva del proyecto; la API conserva salida HTTPS a Stellar Testnet.
+La aplicación no publica puertos de host; Caddy resuelve exclusivamente `signature-frontend:80` en `dyx-edge`. Nginx reenvía internamente las rutas `/api/` a `api:8080` y las descargas S3 prefirmadas `/dyxersignature/*` a `seaweedfs:8333`. SeaweedFS, API y PostgreSQL **solo están en la red privada** del proyecto; la API conserva salida HTTPS a Stellar Testnet.
 
 ## Primera instalación
 

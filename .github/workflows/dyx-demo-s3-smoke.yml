@@ -1,0 +1,56 @@
+name: dyx-demo SeaweedFS S3 bootstrap
+
+on:
+  pull_request:
+    paths:
+      - "deploy/dyx-demo/compose.yml"
+      - ".github/workflows/dyx-demo-s3-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  s3-bootstrap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate isolated temporary configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p "$RUNNER_TEMP/dyxsignature-storage"
+          {
+            echo "SIGNATURE_DATA_ROOT=$RUNNER_TEMP/dyxsignature-storage"
+            echo "POSTGRES_PASSWORD=$(openssl rand -hex 32)"
+            echo "AUTH_JWT_SIGNING_KEY=$(openssl rand -hex 32)"
+            echo "S3_ADMIN_ACCESS_KEY=ciadmin$(openssl rand -hex 8)"
+            echo "S3_ADMIN_SECRET_KEY=$(openssl rand -hex 32)"
+            echo "S3_ACCESS_KEY=ciapi$(openssl rand -hex 8)"
+            echo "S3_SECRET_KEY=$(openssl rand -hex 32)"
+            echo "S3_PUBLIC_URL=https://signature.dyxersoft.com"
+            echo "STELLAR_PUBLIC_KEY="
+            echo "STELLAR_SECRET_SEED="
+          } > "$RUNNER_TEMP/dyxsignature-staging.env"
+          docker network create dyx-edge
+      - name: Start real SeaweedFS S3 without exposing host ports
+        shell: bash
+        run: |
+          docker compose -p dyxs3smoke --env-file "$RUNNER_TEMP/dyxsignature-staging.env" -f deploy/dyx-demo/compose.yml up -d seaweedfs
+      - name: Create bucket and fail on bad S3 credentials, timeouts or unavailable gateway
+        shell: bash
+        run: |
+          timeout 130s docker compose -p dyxs3smoke --env-file "$RUNNER_TEMP/dyxsignature-staging.env" -f deploy/dyx-demo/compose.yml run --rm s3-init
+      - name: Diagnose failed initialization
+        if: failure()
+        shell: bash
+        run: |
+          docker compose -p dyxs3smoke --env-file "$RUNNER_TEMP/dyxsignature-staging.env" -f deploy/dyx-demo/compose.yml ps || true
+          docker compose -p dyxs3smoke --env-file "$RUNNER_TEMP/dyxsignature-staging.env" -f deploy/dyx-demo/compose.yml logs --tail=80 seaweedfs || true
+      - name: Tear down temporary S3 test
+        if: always()
+        shell: bash
+        run: |
+          docker compose -p dyxs3smoke --env-file "$RUNNER_TEMP/dyxsignature-staging.env" -f deploy/dyx-demo/compose.yml down --remove-orphans || true

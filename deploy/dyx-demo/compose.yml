@@ -29,22 +29,40 @@ services:
       SEAWEEDFS_SECRET_KEY: ${S3_SECRET_KEY:?Set S3_SECRET_KEY}
     volumes:
       - ${SIGNATURE_DATA_ROOT:?Set SIGNATURE_DATA_ROOT}/seaweedfs:/data
-    networks:
-      backend: {}
-      edge:
-        aliases: [signature-seaweedfs]
+    networks: [backend]
 
   s3-init:
     image: amazon/aws-cli:2.42.1
     entrypoint: ["/bin/sh", "-ec"]
     command:
       - |
-        until aws s3api list-buckets --endpoint-url http://seaweedfs:8333 >/dev/null 2>&1; do sleep 2; done
-        aws s3api head-bucket --bucket dyxersignature --endpoint-url http://seaweedfs:8333 >/dev/null 2>&1 || aws s3api create-bucket --bucket dyxersignature --endpoint-url http://seaweedfs:8333
+        # Evita bloqueo infinito: AWS_MAX_ATTEMPTS=1, timeout de red y 30 intentos.
+        attempt=1
+        while [ "$$attempt" -le 30 ]; do
+          if aws --cli-connect-timeout 3 --cli-read-timeout 5 s3api list-buckets --endpoint-url http://seaweedfs:8333 >/dev/null 2>&1; then
+            echo "S3 reachable and admin credentials accepted"
+            break
+          fi
+          if [ "$$attempt" -eq 30 ]; then
+            echo "ERROR: SeaweedFS S3 unavailable after 30 attempts. Diagnosing final response:" >&2
+            aws --cli-connect-timeout 3 --cli-read-timeout 5 s3api list-buckets --endpoint-url http://seaweedfs:8333 >&2 || true
+            exit 1
+          fi
+          attempt=$$((attempt+1))
+          sleep 2
+        done
+        if aws --cli-connect-timeout 3 --cli-read-timeout 5 s3api head-bucket --bucket dyxersignature --endpoint-url http://seaweedfs:8333 >/dev/null 2>&1; then
+          echo "S3 bucket dyxersignature already exists"
+        else
+          echo "Creating S3 bucket dyxersignature"
+          aws --cli-connect-timeout 3 --cli-read-timeout 5 s3api create-bucket --bucket dyxersignature --endpoint-url http://seaweedfs:8333
+        fi
     environment:
       AWS_ACCESS_KEY_ID: ${S3_ADMIN_ACCESS_KEY:?Set S3_ADMIN_ACCESS_KEY}
       AWS_SECRET_ACCESS_KEY: ${S3_ADMIN_SECRET_KEY:?Set S3_ADMIN_SECRET_KEY}
       AWS_DEFAULT_REGION: us-east-1
+      AWS_MAX_ATTEMPTS: "1"
+      AWS_EC2_METADATA_DISABLED: "true"
     networks: [backend]
     depends_on: [seaweedfs]
 
