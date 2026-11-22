@@ -71,6 +71,7 @@ export type DashboardMetrics = {
     thisMonth: number;
     averagePerContract: number;
     averageHoursToFirstSignature: number;
+    monthly?: { month: string; count: number }[];
     frequency?: { one: number; two: number; three: number; four: number; fivePlus: number };
   };
   blockchain: {
