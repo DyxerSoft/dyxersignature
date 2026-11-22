@@ -39,12 +39,15 @@ button:disabled {
   background: var(--color-surface);
   color: var(--color-text);
   cursor: pointer;
-  padding: 0.5rem 0.85rem;
+  min-height: 38px;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.85rem;
   font-weight: 600;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   text-decoration: none;
+  box-sizing: border-box;
   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
@@ -55,6 +58,16 @@ button:disabled {
 
 .button-secondary:active:not(:disabled) {
   background: var(--color-border);
+}
+
+@media (pointer: coarse) {
+  button,
+  .button-secondary,
+  a.button-secondary {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0.6rem 1rem;
+  }
 }
 
 input {

@@ -267,7 +267,6 @@ export function ContractWorkbench() {
               <button
                 type="button"
                 className="button-secondary"
-                style={{ fontSize: "0.8rem", padding: "0.25rem 0.5rem" }}
                 onClick={() => {
                   setViewerDocUrl(`/api/v1/contracts/${contractId}/ingest/${digitizationJob.digitizationJobId}/file`);
                   setViewerDocTitle(`Escaneo Original (Job ${digitizationJob.digitizationJobId.slice(0, 8)})`);
@@ -331,7 +330,7 @@ export function ContractWorkbench() {
                       <button
                         type="button"
                         className="button-secondary"
-                        style={{ width: "100%", marginTop: "0.5rem", fontSize: "0.75rem", padding: "0.3rem" }}
+                        style={{ width: "100%", marginTop: "0.5rem" }}
                         onClick={(e) => {
                           e.stopPropagation();
                           setSelectedSignatureForZoom(sig);
@@ -355,20 +354,18 @@ export function ContractWorkbench() {
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <strong>{viewerDocTitle ?? "Visor de Documento"}</strong>
             </div>
-            <div style={{ display: "flex", gap: "0.5rem" }}>
+            <div style={{ display: "flex", gap: "0.75rem" }}>
               <a
                 href={viewerDocUrl}
                 target="_blank"
                 rel="noreferrer"
                 className="button-secondary"
-                style={{ fontSize: "0.8rem", textDecoration: "none", padding: "0.3rem 0.6rem" }}
               >
                 Abrir en pestaña nueva
               </a>
               <button
                 type="button"
                 className="button-secondary"
-                style={{ fontSize: "0.8rem", padding: "0.3rem 0.6rem" }}
                 onClick={() => setViewerDocUrl(null)}
               >
                 Cerrar visor
@@ -465,7 +462,6 @@ export function ContractWorkbench() {
                     <button
                       type="button"
                       className="button-secondary"
-                      style={{ fontSize: "0.75rem", padding: "0.2rem 0.5rem" }}
                       onClick={() => {
                         setViewerDocUrl(`/api/v1/contracts/${contract.id}/versions/${version.id}/file`);
                         setViewerDocTitle(`Versión ${version.versionNumber} - ${contract.businessReference} (PDF Oficial)`);
