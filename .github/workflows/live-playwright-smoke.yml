@@ -6,6 +6,12 @@ on:
       - "tests/browser/**"
       - ".github/workflows/live-playwright-smoke.yml"
   workflow_dispatch:
+    inputs:
+      include_synthetic_signing:
+        description: "Create one idempotent synthetic contract and check Stellar Testnet (writes one demo record)"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -29,6 +35,7 @@ jobs:
       - name: Run desktop/mobile read-only UI and Dashboard KPI assertions
         run: python tests/browser/demo_smoke.py
       - name: One idempotent synthetic contract and Stellar Testnet confirmation
+        if: github.event_name == 'workflow_dispatch' && inputs.include_synthetic_signing == true
         run: python tests/browser/live_stellar_once.py
       - name: Upload sanitized browser report and captures
         if: always()
