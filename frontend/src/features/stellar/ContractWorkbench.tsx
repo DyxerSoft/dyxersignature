@@ -20,10 +20,10 @@ import type {
   Signer
 } from "./types";
 
-export function ContractWorkbench() {
+export function ContractWorkbench({ initialContractId = "" }: { initialContractId?: string } = {}) {
   const [businessReference, setBusinessReference] = useState("GP-TEST-0001");
   const [title, setTitle] = useState("Acuerdo de demostración");
-  const [contractId, setContractId] = useState("");
+  const [contractId, setContractId] = useState(initialContractId);
   const [contractList, setContractList] = useState<ContractListItem[]>([]);
   const [contract, setContract] = useState<ContractDetail | null>(null);
   const [file, setFile] = useState<File | null>(null);

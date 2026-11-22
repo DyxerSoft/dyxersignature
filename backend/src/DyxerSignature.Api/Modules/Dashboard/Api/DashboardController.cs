@@ -73,6 +73,22 @@ public sealed class DashboardController(AppDbContext db) : ControllerBase
                     (x.FirstSignatureAtUtc - x.CreatedAtUtc).TotalHours),
                 2);
 
+        // Histogram of signatures per signed contract; all numbers derive from persisted events.
+        var signatureFrequency = await (
+            from signature in db.SignatureEvents.AsNoTracking()
+            join contract in contracts on signature.ContractId equals contract.Id
+            group signature by signature.ContractId into grouped
+            select grouped.Count()).ToListAsync(cancellationToken);
+
+        var frequency = new
+        {
+            one = signatureFrequency.Count(count => count == 1),
+            two = signatureFrequency.Count(count => count == 2),
+            three = signatureFrequency.Count(count => count == 3),
+            four = signatureFrequency.Count(count => count == 4),
+            fivePlus = signatureFrequency.Count(count => count >= 5)
+        };
+
         return Ok(new
         {
             generatedAtUtc = DateTimeOffset.UtcNow,
@@ -94,7 +110,8 @@ public sealed class DashboardController(AppDbContext db) : ControllerBase
                 averagePerContract = contractCount == 0
                     ? 0
                     : Math.Round((double)signatureCount / contractCount, 2),
-                averageHoursToFirstSignature = averageSignatureHours
+                averageHoursToFirstSignature = averageSignatureHours,
+                frequency
             },
             blockchain = new { pending = pendingAnchors }
         });

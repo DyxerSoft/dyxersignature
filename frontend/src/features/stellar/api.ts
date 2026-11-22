@@ -12,9 +12,9 @@ export function getDashboard() {
   return apiRequest<DashboardMetrics>("/dashboard");
 }
 
-export function listContracts() {
+export function listContracts(page = 1, pageSize = 100) {
   return apiRequest<{ page: number; pageSize: number; total: number; items: ContractListItem[] }>(
-    "/contracts?page=1&pageSize=100"
+    "/contracts?page=" + page + "&pageSize=" + pageSize
   );
 }
 
