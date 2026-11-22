@@ -1,0 +1,47 @@
+name: dyx-demo deployment validation
+
+on:
+  push:
+    branches:
+      - main
+      - integration/stellar-mvp-main-20261122
+    paths:
+      - "deploy/dyx-demo/**"
+      - ".github/workflows/dyx-demo-validate.yml"
+  pull_request:
+    paths:
+      - "deploy/dyx-demo/**"
+      - ".github/workflows/dyx-demo-validate.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-deployment:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate deployment script syntax
+        run: bash -n deploy/dyx-demo/deploy.sh
+      - name: Validate Compose topology and environment
+        env:
+          SIGNATURE_DATA_ROOT: /tmp/dyxsignature-preview
+          POSTGRES_PASSWORD: ci-not-for-production
+          AUTH_JWT_SIGNING_KEY: ci-dummy-key-not-for-production-32-characters
+          S3_ADMIN_ACCESS_KEY: ci-admin
+          S3_ADMIN_SECRET_KEY: ci-admin-secret
+          S3_ACCESS_KEY: ci-api
+          S3_SECRET_KEY: ci-api-secret
+          S3_PUBLIC_URL: https://signature.dyxersoft.com
+          STELLAR_PUBLIC_KEY: ""
+          STELLAR_SECRET_SEED: ""
+        run: |
+          docker network create dyx-edge
+          docker compose -p dyxsignature -f deploy/dyx-demo/compose.yml config --quiet
+      - name: Validate Caddy site configuration
+        run: |
+          mkdir -p .caddy-check
+          hash="$(docker run --rm caddy:2-alpine hash-password --plaintext 'ci-test-password-not-real')"
+          sed "s|__SIGNATURE_PASSWORD_HASH__|$hash|g" deploy/dyx-demo/Caddyfile.signature.template > .caddy-check/Caddyfile
+          docker run --rm -v "$PWD/.caddy-check/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine adapt --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null
