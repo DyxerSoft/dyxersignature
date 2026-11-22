@@ -15,18 +15,23 @@ services:
       timeout: 5s
       retries: 10
 
-  ocr:
+  bff:
     build:
-      context: ./backend/ocr
+      context: ./frontend/bff
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
     volumes:
+      - bff_storage:/app/data/storage
       - paddle_models:/root/.paddlex
       - paddle_models_ocr:/root/.paddleocr
     environment:
       PYTHONUNBUFFERED: "1"
       PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK: "True"
+      BACKEND_API_URL: "http://backend:8080/api/v1"
+      STORAGE_PATH: "/app/data/storage"
+    depends_on:
+      - backend
 
   backend:
     build:
@@ -36,9 +41,6 @@ services:
       ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=dyxersignature;Username=dyxersignature;Password=dyxersignature_dev"
       ASPNETCORE_ENVIRONMENT: "Development"
       Blockchain__Mode: "Simulated"
-      Ocr__Mode: "Http"
-      Ocr__ServiceUrl: "http://ocr:8000"
-      Ingestion__ConfidenceThreshold: "0.85"
     ports:
       - "8081:8080"
     volumes:
@@ -46,8 +48,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      ocr:
-        condition: service_started
 
   frontend:
     build:
@@ -55,6 +55,7 @@ services:
       dockerfile: Dockerfile
     environment:
       VITE_PROXY_TARGET: "http://backend:8080"
+      VITE_BFF_TARGET: "http://bff:8000"
     volumes:
       - ./frontend:/app
       - /app/node_modules
@@ -62,8 +63,10 @@ services:
       - "5173:5173"
     depends_on:
       - backend
+      - bff
 
 volumes:
   dyxersignature_postgres:
+  bff_storage:
   paddle_models:
   paddle_models_ocr:

@@ -9,6 +9,14 @@ export default defineConfig({
       usePolling: true
     },
     proxy: {
+      "^/api/v1/contracts/[^/]+/ingest": {
+        target: process.env.VITE_BFF_TARGET || "http://localhost:8000",
+        changeOrigin: true
+      },
+      "/api/bff": {
+        target: process.env.VITE_BFF_TARGET || "http://localhost:8000",
+        changeOrigin: true
+      },
       "/api": {
         target: process.env.VITE_PROXY_TARGET || "http://localhost:8081",
         changeOrigin: true
