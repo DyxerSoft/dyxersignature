@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { initializeDemoSession } from "../services/api/client";
 import { ContractsPage } from "./ContractsPage";
 import { DashboardPage } from "./DashboardPage";
 import { DocumentsPage } from "./DocumentsPage";
@@ -24,7 +25,22 @@ function Brand() {
 }
 
 export function App() {
-  const [active, setActive] = useState("Contratos");
+  const [active, setActive] = useState("Dashboard");
+  const [sessionStatus, setSessionStatus] = useState<"loading" | "ready" | "failed">("loading");
+  const [sessionError, setSessionError] = useState("");
+
+  // Inicializar JWT de demostración en silencio antes de consultar cualquier módulo.
+  useEffect(() => {
+    let live = true;
+    void initializeDemoSession()
+      .then(() => { if (live) setSessionStatus("ready"); })
+      .catch((error: unknown) => {
+        if (!live) return;
+        setSessionError(error instanceof Error ? error.message : "La API no está disponible.");
+        setSessionStatus("failed");
+      });
+    return () => { live = false; };
+  }, []);
   const [menuOpen, setMenuOpen] = useState(false);
 
   const navigate = (page: string) => {
@@ -45,6 +61,19 @@ export function App() {
   const contractRouteId = active.startsWith("Contratos:")
     ? active.slice("Contratos:".length)
     : "";
+
+  if (sessionStatus !== "ready") {
+    return <main className="section-content" style={{ maxWidth: 680, margin: "12vh auto", padding: "2rem" }}>
+      <h1>DyxerSignature</h1>
+      {sessionStatus === "loading" ? <p role="status">Conectando con la API de demostración…</p> :
+        <div className="api-message" role="alert">
+          <strong>No se pudo iniciar la sesión de demostración.</strong>
+          <p>{sessionError}</p>
+          <p>Verifica que la API esté disponible en Development y que el acceso privado de Caddy esté autorizado.</p>
+          <button type="button" onClick={() => window.location.reload()}>Reintentar</button>
+        </div>}
+    </main>;
+  }
 
   return (
     <div className="app-frame">
