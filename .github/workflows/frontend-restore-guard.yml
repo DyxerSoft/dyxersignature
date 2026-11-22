@@ -12,6 +12,7 @@ permissions:
 
 jobs:
   scope-and-bff:
+    if: startsWith(github.head_ref, 'hotfix/restore-feat-front-bff-only-')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
