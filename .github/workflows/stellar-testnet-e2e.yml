@@ -56,6 +56,10 @@ jobs:
           exit 1
       - name: Create, correct, sign, anchor, verify, and download through the API
         run: dotnet run --project backend/tools/StellarTestnetSmoke/StellarTestnetSmoke.csproj --configuration Release --no-build -- --api-e2e http://127.0.0.1:8080
+      - name: Collect API logs when the smoke test fails
+        if: failure()
+        shell: bash
+        run: docker compose logs --no-color api 2>&1 | tail -n 200
       - name: Stop isolated Compose services and remove their volumes
         if: always()
         run: docker compose down --volumes --remove-orphans
