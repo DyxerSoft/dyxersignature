@@ -5,6 +5,8 @@ using DyxerSignature.Api.Modules.Blockchain.Infrastructure;
 using DyxerSignature.Api.Modules.Documents.Application;
 using DyxerSignature.Api.Modules.Documents.Infrastructure;
 using DyxerSignature.Api.Modules.Evidence.Application;
+using DyxerSignature.Api.Modules.Ingestion.Application;
+using DyxerSignature.Api.Modules.Ingestion.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -20,10 +22,26 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.Configure<StorageOptions>(builder.Configuration.GetSection("Storage"));
 builder.Services.Configure<BlockchainOptions>(builder.Configuration.GetSection("Blockchain"));
+builder.Services.Configure<IngestionOptions>(builder.Configuration.GetSection("Ingestion"));
 
 builder.Services.AddScoped<IDocumentStorage, LocalDocumentStorage>();
 builder.Services.AddSingleton<DocumentIntegrityService>();
 builder.Services.AddSingleton<EvidenceManifestBuilder>();
+
+var ocrMode = builder.Configuration["Ocr:Mode"] ?? "Http";
+if (ocrMode.Equals("Simulated", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.AddSingleton<IOcrEngineGateway, SimulatedOcrGateway>();
+}
+else
+{
+    builder.Services.AddHttpClient<IOcrEngineGateway, PaddleOcrHttpClient>(client =>
+    {
+        client.Timeout = TimeSpan.FromMinutes(2);
+    });
+}
+
+builder.Services.AddScoped<DigitizationService>();
 
 var blockchainMode = builder.Configuration["Blockchain:Mode"] ?? "Simulated";
 
