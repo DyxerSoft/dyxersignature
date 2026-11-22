@@ -38,6 +38,64 @@ public sealed class LocalDocumentStorage(IOptions<StorageOptions> options) : IDo
         return relative.Replace(Path.DirectorySeparatorChar, '/');
     }
 
+    public async Task<string> SaveSignatureCropAsync(
+        Guid contractId,
+        Guid digitizationJobId,
+        string signatureFileName,
+        Stream content,
+        CancellationToken cancellationToken)
+    {
+        var relative = Path.Combine(
+            contractId.ToString("N"),
+            "ingest",
+            digitizationJobId.ToString("N"),
+            "signatures",
+            signatureFileName);
+
+        var fullPath = Resolve(relative);
+        Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+
+        await using var output = new FileStream(
+            fullPath,
+            FileMode.CreateNew,
+            FileAccess.Write,
+            FileShare.None,
+            81920,
+            useAsync: true);
+
+        await content.CopyToAsync(output, cancellationToken);
+        return relative.Replace(Path.DirectorySeparatorChar, '/');
+    }
+
+    public async Task<string> SaveScanAsync(
+        Guid contractId,
+        Guid digitizationJobId,
+        string fileName,
+        Stream content,
+        CancellationToken cancellationToken)
+    {
+        var relative = Path.Combine(
+            contractId.ToString("N"),
+            "ingest",
+            digitizationJobId.ToString("N"),
+            "original",
+            fileName);
+
+        var fullPath = Resolve(relative);
+        Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+
+        await using var output = new FileStream(
+            fullPath,
+            FileMode.CreateNew,
+            FileAccess.Write,
+            FileShare.None,
+            81920,
+            useAsync: true);
+
+        await content.CopyToAsync(output, cancellationToken);
+        return relative.Replace(Path.DirectorySeparatorChar, '/');
+    }
+
     public Task<Stream> OpenReadAsync(string storageKey, CancellationToken cancellationToken)
     {
         Stream stream = new FileStream(
