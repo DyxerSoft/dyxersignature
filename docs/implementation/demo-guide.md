@@ -49,9 +49,9 @@ Las rutas de negocio requieren JWT. La descarga retorna la URL breve después de
 
 ## Smoke test aislado de Stellar
 
-`dotnet run --project backend/tools/StellarTestnetSmoke/StellarTestnetSmoke.csproj` genera una clave efímera en memoria, solicita fondos a Friendbot Testnet y ancla/verifica un hash aleatorio mediante el SDK usado por la API. La semilla no se imprime ni se persiste. En GitHub Actions el smoke test corre solo cuando el commit contiene `[stellar-smoke]` o por ejecución manual.
+`dotnet run --project backend/tools/StellarTestnetSmoke/StellarTestnetSmoke.csproj` genera una clave efímera en memoria, solicita fondos a Friendbot Testnet y ancla/verifica tres hashes aleatorios de forma secuencial mediante el SDK usado por la API. Registra latencia por muestra y transacciones verificadas por segundo; la semilla no se imprime ni se persiste. En GitHub Actions el smoke test corre solo cuando el commit contiene `[stellar-smoke]` o por ejecución manual.
 
-Este smoke test demuestra el adaptador contra Testnet; la aceptación del flujo completo con un PDF requiere ejecutar el Compose con una cuenta Testnet configurada y conservar el transaction hash resultante como evidencia.
+Este smoke test mide una muestra pequeña del adaptador contra Testnet, no el límite máximo de la red. La aceptación del flujo completo con un PDF requiere ejecutar el Compose con una cuenta Testnet configurada y conservar el transaction hash resultante como evidencia.
 
 ## Limitaciones de la demo
 

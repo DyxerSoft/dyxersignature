@@ -16,7 +16,7 @@ services:
       retries: 10
 
   seaweedfs:
-    image: chrislusf/seaweedfs:latest
+    image: chrislusf/seaweedfs:4.54
     entrypoint: ["/bin/sh", "-ec"]
     command:
       - |
@@ -89,3 +89,4 @@ services:
 volumes:
   dyxersignature_postgres:
   dyxersignature_seaweedfs:
+

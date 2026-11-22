@@ -39,5 +39,6 @@ El ledger recibe únicamente el SHA-256 del PDF definitivo. El archivo, los firm
 - [Plan y reportes por fase](docs/implementation/phase-plan.md)
 - [Guía de demostración](docs/implementation/demo-guide.md)
 - [Flujo Stellar Testnet y smoke test](backend/blockchain/README.md)
+- [Prueba de carga reproducible](docs/implementation/load-test.md)
 - API interactiva: `/swagger`
 
