@@ -1,4 +1,5 @@
-import { createContract, getContract, getDownloadUrl, listContracts, uploadDraftVersion } from "../stellar/api";
+import { createContract, getContract, listContracts, uploadDraftVersion } from "../stellar/api";
+import { getDocumentPdf } from "../../services/api/client";
 
 export type TemplateDocument = {
   id: string; // real documentVersionId
@@ -49,13 +50,44 @@ export async function uploadDocument(
 }
 
 export async function openDocument(id: string, action: "view" | "download"): Promise<void> {
-  // A presigned link requires JWT on the API but does not expose the JWT to S3.
-  const response = await getDownloadUrl(id);
-  const anchor = document.createElement("a");
-  anchor.href = response.downloadUrl;
-  anchor.target = action === "view" ? "_blank" : "_self";
-  anchor.rel = "noopener noreferrer";
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
+  // Open synchronously on the user's click to avoid popup blockers.
+  const preview = action === "view" ? window.open("about:blank", "_blank") : null;
+  if (preview) {
+    preview.opener = null;
+    preview.document.title = "Abriendo documento · DyxerSignature";
+    preview.document.body.textContent = "Preparando documento...";
+  }
+
+  try {
+    const blob = await getDocumentPdf(id);
+    if (blob.size === 0) throw new Error("El archivo se encuentra vacío.");
+    const header = await blob.slice(0, 5).text();
+    const tail = await blob.slice(Math.max(0, blob.size - 4096)).text();
+    if (header !== "%PDF-" || !tail.includes("startxref") || !tail.includes("%%EOF")) {
+      throw new Error("El archivo almacenado no contiene una estructura PDF completa. "
+        + "El registro se conserva para auditoría; se necesita una versión corregida del documento.");
+    }
+
+    const url = URL.createObjectURL(blob);
+    if (action === "view") {
+      if (!preview) {
+        URL.revokeObjectURL(url);
+        throw new Error("El navegador bloqueó la nueva pestaña. Habilita las ventanas emergentes para este sitio.");
+      }
+      preview.location.replace(url);
+      // The browser PDF viewer needs time to finish reading the object URL.
+      window.setTimeout(() => URL.revokeObjectURL(url), 300000);
+    } else {
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `dyxersignature-${id}.pdf`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+    }
+  } catch (cause) {
+    if (preview && !preview.closed) preview.close();
+    throw cause;
+  }
 }
