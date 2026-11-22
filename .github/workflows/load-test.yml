@@ -8,10 +8,6 @@ on:
       - 'docker-compose.yml'
       - 'backend/**'
       - '.github/workflows/load-test.yml'
-  pull_request:
-    paths:
-      - 'scripts/load/**'
-      - '.github/workflows/load-test.yml'
   workflow_dispatch:
     inputs:
       vus:
@@ -28,7 +24,7 @@ permissions:
 
 jobs:
   api-load-test:
-    if: github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request' || contains(github.event.head_commit.message, '[load-test]')
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[load-test]')
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
