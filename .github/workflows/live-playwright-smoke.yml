@@ -1,0 +1,38 @@
+name: DyxerSignature public Playwright smoke
+
+on:
+  pull_request:
+    paths:
+      - "tests/browser/**"
+      - ".github/workflows/live-playwright-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-readonly-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PUBLIC_URL: https://signature.dyxersoft.com
+      PLAYWRIGHT_REPORT_DIR: artifacts/browser
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install browser tooling
+        run: |
+          python -m pip install --disable-pip-version-check playwright==1.56.0
+          python -m playwright install --with-deps chromium
+      - name: Run desktop/mobile read-only UI and Dashboard KPI assertions
+        run: python tests/browser/demo_smoke.py
+      - name: Upload sanitized browser report and captures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: signature-browser-smoke
+          path: artifacts/browser/
+          retention-days: 7
+          if-no-files-found: warn
