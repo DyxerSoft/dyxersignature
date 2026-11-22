@@ -111,7 +111,14 @@ public sealed class StellarBlockchainGateway : IBlockchainGateway, IDisposable
             if (recovered is not null)
                 return recovered;
 
-            throw new InvalidOperationException("Stellar Testnet did not confirm the prepared transaction.");
+            var resultCodes = response.SubmitTransactionResponseExtras?.ExtrasResultCodes;
+            var operationCodes = resultCodes?.OperationsResultCodes is { Count: > 0 } codes
+                ? string.Join(",", codes)
+                : "none";
+            throw new InvalidOperationException(
+                $"Stellar Testnet did not confirm the prepared transaction " +
+                $"(transaction result: {resultCodes?.TransactionResultCode ?? "unknown"}; " +
+                $"operation results: {operationCodes}).");
         }
         catch (OperationCanceledException)
         {
