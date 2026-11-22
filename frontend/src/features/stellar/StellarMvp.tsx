@@ -1,4 +1,3 @@
-import { Dashboard } from "../dashboard/Dashboard";
 import { ContractWorkbench } from "./ContractWorkbench";
 import "./stellar.css";
 
@@ -13,7 +12,6 @@ export function StellarMvp({ initialContractId = "" }: { initialContractId?: str
       </div>
       <span className="status-pill">Stellar Testnet</span>
     </header>
-    <Dashboard />
     <ContractWorkbench initialContractId={initialContractId} />
   </section>;
 }
