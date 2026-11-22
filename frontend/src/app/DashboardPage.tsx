@@ -112,20 +112,20 @@ export function DashboardPage({ onNavigate }: { onNavigate: (page: string) => vo
       </section>
       <section className="panel recent-panel" aria-label="Actividad documental">
         <div className="panel-heading"><div><span className="panel-icon"><Icon name="clock" size={20}/></span>
-          <div><h3>Actividad contractual reciente</h3><p>Movimientos registrados en el historial de cada contrato</p></div>
+          <div><h3>Contratos con actividad reciente</h3><p>Un contrato por fila, con su último movimiento y acceso al historial completo</p></div>
         </div><button className="text-link" onClick={()=>onNavigate("Trazabilidad")}>
           Ver trazabilidad <Icon name="arrow" size={14}/>
         </button></div>
         <div className="activity-timeline">
           {(metrics.recentActivity ?? []).length === 0 ?
             <p className="empty-activity">La actividad de contratos aparecerá aquí cuando se registren movimientos.</p> :
-            (metrics.recentActivity ?? []).map((event,index)=>
-              <button className="activity-event" key={event.contractId+event.occurredAtUtc+index}
+            (metrics.recentActivity ?? []).map(event=>
+              <button className="activity-event" key={event.contractId}
                 onClick={()=>onNavigate("Trazabilidad:"+event.contractId)}>
                 <span className="activity-marker"><Icon name="file" size={16}/></span>
                 <span className="activity-details">
                   <strong>{eventName(event.eventType)}</strong>
-                  <small>{event.businessReference}</small>
+                  <small>{event.title || event.businessReference} · {event.eventCount ?? 1} movimientos</small>
                 </span>
                 <time dateTime={event.occurredAtUtc}>
                   {new Date(event.occurredAtUtc).toLocaleString("es-BO")}
