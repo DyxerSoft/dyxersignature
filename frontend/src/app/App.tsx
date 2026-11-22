@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { initializeDemoSession } from "../services/api/client";
 import { ContractsPage } from "./ContractsPage";
 import { DashboardPage } from "./DashboardPage";
 import { DocumentsPage } from "./DocumentsPage";
@@ -17,10 +18,30 @@ function Brand() { return <div className="brand"><img className="brand-logo" src
 
 export function App() {
   const [active,setActive]=useState("Dashboard");
+  const [sessionState,setSessionState] = useState<"loading"|"ready"|"error">("loading");
+  const [sessionError,setSessionError] = useState("");
+  useEffect(()=>{
+    let mounted=true;
+    void initializeDemoSession().then(()=>{
+      if(mounted)setSessionState("ready");
+    }).catch((cause:unknown)=>{
+      if(!mounted)return;
+      setSessionError(cause instanceof Error?cause.message:"API no disponible");
+      setSessionState("error");
+    });
+    return()=>{mounted=false;};
+  },[]);
   const [menuOpen,setMenuOpen]=useState(false);
   const navigate=(page:string)=>{setActive(page);setMenuOpen(false);};
   const route=active.startsWith("Trazabilidad")?"Trazabilidad":active;
   const traceContractId=active.startsWith("Trazabilidad:")?active.slice("Trazabilidad:".length):"";
+  if(sessionState!=="ready")return <main className="section-content" style={{maxWidth:620,margin:"12vh auto"}}>
+    <h1>DyxerSignature</h1>
+    {sessionState==="loading"?<p role="status">Conectando a la API…</p>:
+      <div className="api-message" role="alert"><strong>No se pudo iniciar la sesión de demostración.</strong>
+        <p>{sessionError}</p><button type="button" onClick={()=>window.location.reload()}>Reintentar</button>
+      </div>}
+  </main>;
   return <div className="app-frame">
     <aside className={`sidebar ${menuOpen?"sidebar--open":""}`}>
       <Brand/>
