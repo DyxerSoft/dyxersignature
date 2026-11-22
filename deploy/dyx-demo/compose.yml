@@ -41,17 +41,17 @@ services:
       - |
         # Evita bloqueo infinito: AWS_MAX_ATTEMPTS=1, timeout de red y 30 intentos.
         attempt=1
-        while [ "$attempt" -le 30 ]; do
+        while [ "$$attempt" -le 30 ]; do
           if aws --cli-connect-timeout 3 --cli-read-timeout 5 s3api list-buckets --endpoint-url http://seaweedfs:8333 >/dev/null 2>&1; then
             echo "S3 reachable and admin credentials accepted"
             break
           fi
-          if [ "$attempt" -eq 30 ]; then
+          if [ "$$attempt" -eq 30 ]; then
             echo "ERROR: SeaweedFS S3 unavailable after 30 attempts. Diagnosing final response:" >&2
             aws --cli-connect-timeout 3 --cli-read-timeout 5 s3api list-buckets --endpoint-url http://seaweedfs:8333 >&2 || true
             exit 1
           fi
-          attempt=$((attempt+1))
+          attempt=$$((attempt+1))
           sleep 2
         done
         if aws --cli-connect-timeout 3 --cli-read-timeout 5 s3api head-bucket --bucket dyxersignature --endpoint-url http://seaweedfs:8333 >/dev/null 2>&1; then
