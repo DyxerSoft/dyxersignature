@@ -28,3 +28,29 @@ export type ContractDetail = {
   currentVersionId: string | null;
   versions: ContractVersion[];
 };
+
+export type DetectedSignature = {
+  id: string;
+  pageNumber: number;
+  boundingBox: string;
+  confidence: number;
+  cropStorageKey: string;
+};
+
+export type DigitizationJobDetail = {
+  digitizationJobId: string;
+  status: string;
+  errorMessage?: string | null;
+  confidenceScore: number;
+  requiresReview: boolean;
+  extractedTextSummary: string | null;
+  signaturesDetected: DetectedSignature[];
+  generatedDocumentVersionId: string | null;
+  documentHash: string | null;
+  versionStatus: string | null;
+  blockchain: {
+    status: string;
+    transactionHash: string | null;
+    blockNumber: number | null;
+  } | null;
+};
