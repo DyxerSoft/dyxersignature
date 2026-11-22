@@ -147,7 +147,7 @@ export function ContractWorkbench() {
             }}
             onClick={() => setActiveTab("ocr")}
           >
-            📷 Digitalización con PaddleOCR (REQ-DYXS-002)
+            Digitalización con PaddleOCR (REQ-DYXS-002)
           </button>
           <button
             type="button"
@@ -163,7 +163,7 @@ export function ContractWorkbench() {
             }}
             onClick={() => setActiveTab("pdf")}
           >
-            📄 Subir PDF firmado directo (REQ-DYXS-001)
+            Subir PDF firmado directo (REQ-DYXS-001)
           </button>
         </div>
 
@@ -176,7 +176,7 @@ export function ContractWorkbench() {
             marginBottom: "1rem"
           }}>
             <p style={{ margin: 0, color: "var(--color-text-muted)", fontSize: "0.95rem" }}>
-              💡 Para comenzar, ingresa una <strong>Referencia de negocio</strong> en el campo de arriba y haz clic en <strong>"Crear contrato"</strong>. A continuación podrás seleccionar tu archivo escaneado o imagen para procesarlo con <strong>PaddleOCR</strong>.
+              Para comenzar, ingresa una <strong>Referencia de negocio</strong> en el campo de arriba y haz clic en <strong>"Crear contrato"</strong>. A continuación podrás seleccionar tu archivo escaneado o imagen para procesarlo con <strong>PaddleOCR</strong>.
             </p>
           </div>
         ) : activeTab === "ocr" ? (
@@ -244,12 +244,12 @@ export function ContractWorkbench() {
                   setViewerDocTitle(`Escaneo Original (Job ${digitizationJob.digitizationJobId.slice(0, 8)})`);
                 }}
               >
-                📄 Ver Escaneo Completo
+                Ver Escaneo Completo
               </button>
               <span className={`status-pill ${digitizationJob.status === "Failed" ? "pill-danger" : ""}`}>{digitizationJob.status}</span>
               {digitizationJob.status !== "Failed" && (
                 <span className={`status-pill ${digitizationJob.requiresReview ? "pill-warning" : "pill-success"}`}>
-                  Confianza: {(digitizationJob.confidenceScore * 100).toFixed(1)}% {digitizationJob.requiresReview ? "⚠️ Requiere Revisión" : "✅ Válido"}
+                  Confianza: {(digitizationJob.confidenceScore * 100).toFixed(1)}% ({digitizationJob.requiresReview ? "Requiere Revisión" : "Válido"})
                 </span>
               )}
             </div>
@@ -274,7 +274,7 @@ export function ContractWorkbench() {
             <div style={{ marginTop: "1rem" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <strong style={{ fontSize: "0.9rem" }}>
-                  ✍️ Firmas Manuscritas Detectadas ({digitizationJob.signaturesDetected.length}):
+                  Firmas Manuscritas Detectadas ({digitizationJob.signaturesDetected.length}):
                 </strong>
                 <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
                   (Haz clic en cualquier firma para ampliarla en alta resolución)
@@ -308,7 +308,7 @@ export function ContractWorkbench() {
                           setSelectedSignatureForZoom(sig);
                         }}
                       >
-                        🔍 Ver en tamaño completo
+                        Ver en tamaño completo
                       </button>
                     </div>
                   );
@@ -324,7 +324,6 @@ export function ContractWorkbench() {
         <section className="document-viewer-card" aria-label="Visor de documento">
           <div className="document-viewer-header">
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <span style={{ fontSize: "1.2rem" }}>📄</span>
               <strong>{viewerDocTitle ?? "Visor de Documento"}</strong>
             </div>
             <div style={{ display: "flex", gap: "0.5rem" }}>
@@ -335,7 +334,7 @@ export function ContractWorkbench() {
                 className="button-secondary"
                 style={{ fontSize: "0.8rem", textDecoration: "none", padding: "0.3rem 0.6rem" }}
               >
-                Abrir en pestaña nueva ↗
+                Abrir en pestaña nueva
               </a>
               <button
                 type="button"
@@ -343,7 +342,7 @@ export function ContractWorkbench() {
                 style={{ fontSize: "0.8rem", padding: "0.3rem 0.6rem" }}
                 onClick={() => setViewerDocUrl(null)}
               >
-                Cerrar visor ✕
+                Cerrar visor
               </button>
             </div>
           </div>
@@ -371,10 +370,10 @@ export function ContractWorkbench() {
               <button
                 type="button"
                 className="button-secondary"
-                style={{ cursor: "pointer", fontSize: "1rem", padding: "0.25rem 0.6rem" }}
+                style={{ cursor: "pointer", fontSize: "0.85rem", padding: "0.25rem 0.6rem" }}
                 onClick={() => setSelectedSignatureForZoom(null)}
               >
-                ✕
+                Cerrar
               </button>
             </div>
 
@@ -397,7 +396,7 @@ export function ContractWorkbench() {
                 className="status-pill"
                 style={{ textDecoration: "none", background: "var(--color-primary)", color: "#fff", cursor: "pointer" }}
               >
-                📥 Descargar PNG original
+                Descargar PNG original
               </a>
             </div>
           </div>
@@ -432,7 +431,7 @@ export function ContractWorkbench() {
                         setViewerDocTitle(`Versión ${version.versionNumber} - ${contract.businessReference} (PDF Oficial)`);
                       }}
                     >
-                      📄 Ver PDF Oficial
+                      Ver PDF Oficial
                     </button>
                     <span className="status-pill">{version.status}</span>
                   </div>
