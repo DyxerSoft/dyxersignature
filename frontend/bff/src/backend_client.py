@@ -1,11 +1,12 @@
 import os
 import logging
 from typing import Optional, Dict, Any
+
 import httpx
 
 logger = logging.getLogger("backend_client")
+BACKEND_API_URL = os.getenv("BACKEND_API_URL", "http://api:8080/api/v1")
 
-BACKEND_API_URL = os.getenv("BACKEND_API_URL", "http://backend:8080/api/v1")
 
 class BackendClient:
     def __init__(self, base_url: Optional[str] = None):
@@ -16,24 +17,31 @@ class BackendClient:
         contract_id: str,
         filename: str,
         file_bytes: bytes,
-        correction_reason: Optional[str] = None
+        correction_reason: Optional[str] = None,
+        authorization: Optional[str] = None,
     ) -> Dict[str, Any]:
-        url = f"{self.base_url}/contracts/{contract_id}/versions/signed"
+        """Register an OCR result as a DRAFT in the real Stellar .NET API.
+
+        A qualified/digital signature is NOT performed by this method. The
+        frontend must explicitly review and sign the version afterwards.
+        """
+        if not authorization or not authorization.startswith("Bearer "):
+            return {"status": "AuthenticationRequired", "detail": "JWT requerido para registrar el PDF."}
+        url = f"{self.base_url}/contracts/{contract_id}/versions"
         data = {}
         if correction_reason:
             data["correctionReason"] = correction_reason
 
-        files = {
-            "file": (filename, file_bytes, "application/pdf" if filename.lower().endswith(".pdf") else "image/png")
-        }
+        files = {"file": (filename, file_bytes, "application/pdf")}
+        headers = {"Authorization": authorization}
 
         async with httpx.AsyncClient(timeout=30.0) as client:
             try:
-                response = await client.post(url, data=data, files=files)
+                response = await client.post(url, data=data, files=files, headers=headers)
                 if response.status_code >= 400:
-                    logger.warning(f"Error {response.status_code} desde el backend al registrar versión: {response.text}")
-                    return {"status": "BackendWarning", "detail": response.text}
+                    logger.warning("Error %s from .NET draft upload for contract %s", response.status_code, contract_id)
+                    return {"status": "BackendWarning", "httpStatus": response.status_code}
                 return response.json()
-            except Exception as ex:
-                logger.error(f"No se pudo conectar con el backend en {url}: {ex}")
-                return {"status": "BackendUnavailable", "detail": str(ex)}
+            except httpx.RequestError:
+                logger.exception("No se pudo conectar con el backend .NET para el contrato %s", contract_id)
+                return {"status": "BackendUnavailable", "detail": "No se pudo conectar con la API de contratos."}
