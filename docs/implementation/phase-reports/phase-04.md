@@ -14,7 +14,7 @@ La vista conserva las tarjetas y el estilo global del mockup. Los datos del dash
 
 - Frontend: `frontend/src/app/App.tsx`, `features/contracts/{ContractWorkbench.tsx,api.ts,types.ts}`, `features/dashboard/Dashboard.tsx`, cliente HTTP y estilos.
 - API de documentos: `DocumentsController.cs` devuelve la URL temporal después de guardar auditoría; verifica Stellar solo cuando el anclaje está confirmado.
-- Descarga: `S3DocumentStorage.cs` emite `Content-Disposition: attachment`, tipo PDF y `Cache-Control: no-store` en la URL prefirmada.
+- Descarga: `S3DocumentStorage.cs` fija `Content-Type: application/pdf`, `Content-Disposition: attachment` y `Cache-Control: no-store` como metadata del objeto; el endpoint autorizado emite la URL prefirmada temporal.
 - Guías y requisitos: `README.md`, `docs/implementation/demo-guide.md`, guías de módulos y de arquitectura.
 
 ## Pruebas y resultados
