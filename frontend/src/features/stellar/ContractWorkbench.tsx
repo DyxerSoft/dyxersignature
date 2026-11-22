@@ -21,15 +21,15 @@ import type {
 } from "./types";
 
 export function ContractWorkbench({ initialContractId = "" }: { initialContractId?: string } = {}) {
-  const [businessReference, setBusinessReference] = useState("GP-TEST-0001");
-  const [title, setTitle] = useState("Acuerdo de demostración");
+  const [businessReference, setBusinessReference] = useState(() => "IJ-RES-" + Date.now().toString(36).toUpperCase());
+  const [title, setTitle] = useState("Contrato de reserva de inmueble");
   const [contractId, setContractId] = useState(initialContractId);
   const [contractList, setContractList] = useState<ContractListItem[]>([]);
   const [contract, setContract] = useState<ContractDetail | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [reason, setReason] = useState("");
-  const [signerName, setSignerName] = useState("Firmante de demostración");
-  const [signerEmail, setSignerEmail] = useState("demo@dyxer.local");
+  const [signerName, setSignerName] = useState("Representante Comercial");
+  const [signerEmail, setSignerEmail] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
@@ -88,7 +88,7 @@ export function ContractWorkbench({ initialContractId = "" }: { initialContractI
     try {
       const created = await createContract(businessReference, title);
       setContractId(created.id);
-      setNotice("Contrato creado. Carga un PDF para crear su primera versión.");
+      setNotice("Contrato registrado. Adjunta el PDF para continuar.");
       await refreshList();
     } catch (cause) {
       setError(messageFrom(cause));
@@ -230,7 +230,7 @@ export function ContractWorkbench({ initialContractId = "" }: { initialContractI
           </form>
 
           <div className="signer-form">
-            <strong>Datos del firmante de demostración</strong>
+            <strong>Datos del firmante</strong>
             <div className="form-row">
               <label>
                 Nombre
