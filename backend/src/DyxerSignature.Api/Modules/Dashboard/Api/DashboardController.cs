@@ -42,6 +42,35 @@ public sealed class DashboardController(AppDbContext db) : ControllerBase
             where signature.SignedAtUtc >= monthStartUtc
             select signature.Id).CountAsync(cancellationToken);
 
+        // Last six calendar months, aggregated in PostgreSQL (not fabricated UI data).
+        // A single grouped query avoids six per-month round trips during peak traffic.
+        var monthlyStartUtc = monthStartUtc.AddMonths(-5);
+        var groupedMonthlySignatures = await (
+            from signature in db.SignatureEvents.AsNoTracking()
+            join contract in contracts on signature.ContractId equals contract.Id
+            where signature.SignedAtUtc >= monthlyStartUtc
+            group signature by new { signature.SignedAtUtc.Year, signature.SignedAtUtc.Month }
+            into byMonth
+            select new
+            {
+                byMonth.Key.Year,
+                byMonth.Key.Month,
+                Count = byMonth.Count()
+            }).ToListAsync(cancellationToken);
+        var monthlySignatures = Enumerable.Range(0, 6)
+            .Select(offset =>
+            {
+                var month = monthlyStartUtc.AddMonths(offset);
+                return new
+                {
+                    month = month.ToString("yyyy-MM", System.Globalization.CultureInfo.InvariantCulture),
+                    count = groupedMonthlySignatures
+                        .Where(value => value.Year == month.Year && value.Month == month.Month)
+                        .Sum(value => value.Count)
+                };
+            })
+            .ToArray();
+
         var statusCounts = await contracts
             .GroupBy(x => x.Status)
             .Select(group => new { Status = group.Key, Count = group.Count() })
@@ -176,6 +205,7 @@ public sealed class DashboardController(AppDbContext db) : ControllerBase
                     ? 0
                     : Math.Round((double)signatureCount / contractCount, 2),
                 averageHoursToFirstSignature = averageSignatureHours,
+                monthly = monthlySignatures,
                 frequency
             },
             blockchain = new
