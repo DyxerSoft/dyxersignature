@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Icon, type IconName } from "./Icon";
+import { presentation } from "./presentation";
 import { getDashboard } from "../features/stellar/api";
 import type { DashboardMetrics } from "../features/stellar/types";
 
@@ -35,7 +36,7 @@ export function DashboardPage({ onNavigate }: { onNavigate: (page: string) => vo
   return <div className="dashboard-content">
     <div className="welcome-row"><div><span className="eyebrow">RESUMEN DE ACTIVIDAD</span>
       <h2>Panel de gestión documental</h2>
-      <p>Información real del backend. Sin contadores ni actividades simulados.</p>
+      <p>Contratos, documentos y firmas registrados en el espacio de trabajo.</p>
     </div><span className="date-filter"><span className="calendar-icon">▦</span>
       {metrics ? new Date(metrics.generatedAtUtc).toLocaleString("es-BO") : "Consultando datos…"}
     </span></div>
@@ -59,7 +60,7 @@ export function DashboardPage({ onNavigate }: { onNavigate: (page: string) => vo
             <div><span>Firmas registradas</span><strong>{metrics.signatures.total}</strong></div>
             <div><span>Horas hasta primera firma (promedio)</span><strong>{metrics.signatures.averageHoursToFirstSignature.toFixed(2)} h</strong></div>
           </div>
-          <p style={{ padding: "0 1.5rem" }}>Para ver cada evento y su evidencia, consulta la trazabilidad del contrato.</p>
+          <p style={{ padding: "0 1.5rem" }}>Consulta el estado de los contratos y el historial de cada firma.</p>
         </article>
         <article className="panel contracts-panel">
           <div className="panel-heading"><div><span className="panel-icon"><Icon name="contract" size={20}/></span>
@@ -109,47 +110,48 @@ export function DashboardPage({ onNavigate }: { onNavigate: (page: string) => vo
           </div>
         </article>
       </section>
-      <section className="panel recent-panel">
+      <section className="panel recent-panel" aria-label="Actividad documental">
         <div className="panel-heading"><div><span className="panel-icon"><Icon name="clock" size={20}/></span>
-          <div><h3>Trazabilidad y evidencia</h3><p>Consulta los movimientos directamente desde cada contrato</p></div>
+          <div><h3>Actividad contractual reciente</h3><p>Movimientos registrados en el historial de cada contrato</p></div>
         </div><button className="text-link" onClick={()=>onNavigate("Trazabilidad")}>
           Ver trazabilidad <Icon name="arrow" size={14}/>
         </button></div>
-        <div style={{padding:"1.5rem"}}>Los eventos de auditoría se muestran desde el módulo Trazabilidad, sin registros de muestra.</div>
+        <div className="activity-timeline">
+          {(metrics.recentActivity ?? []).length === 0 ?
+            <p className="empty-activity">La actividad de contratos aparecerá aquí cuando se registren movimientos.</p> :
+            (metrics.recentActivity ?? []).map((event,index)=>
+              <button className="activity-event" key={event.contractId+event.occurredAtUtc+index}
+                onClick={()=>onNavigate("Trazabilidad:"+event.contractId)}>
+                <span className="activity-marker"><Icon name="file" size={16}/></span>
+                <span className="activity-details">
+                  <strong>{eventName(event.eventType)}</strong>
+                  <small>{event.businessReference}</small>
+                </span>
+                <time dateTime={event.occurredAtUtc}>
+                  {new Date(event.occurredAtUtc).toLocaleString("es-BO")}
+                </time>
+                <Icon name="arrow" size={15}/>
+              </button>
+            )}
+        </div>
       </section>
-      <section className="panel recent-panel" aria-label="Indicadores operativos Stellar">
-        <div className="panel-heading"><div>
-          <span className="panel-icon"><Icon name="shield" size={20}/></span>
-          <div><h3>Salud del anclaje Stellar</h3>
-            <p>Estado operativo de confirmaciones, reintentos y cola desde PostgreSQL</p>
+      <section className="panel stellar-health-panel" aria-label="Indicadores operativos Stellar">
+        <div className="panel-heading"><div><span className="panel-icon"><Icon name="shield" size={20}/></span>
+          <div><h3>Estado de validación en Stellar</h3>
+            <p>Seguimiento de los anclajes y sus confirmaciones</p>
           </div>
         </div></div>
-        <div className="frequency-summary" style={{padding:"1.25rem",flexWrap:"wrap"}}>
-          <div><span>Confirmados en Testnet</span>
-            <strong>{metrics.blockchain.confirmed?.toLocaleString("es-BO") ?? "—"}</strong>
-          </div>
-          <div><span>En espera (incluye errores)</span>
-            <strong>{metrics.blockchain.pending.toLocaleString("es-BO")}</strong>
-          </div>
-          <div><span>Con fallo actual</span>
-            <strong>{metrics.blockchain.failed?.toLocaleString("es-BO") ?? "—"}</strong>
-          </div>
-          <div><span>Con reintentos</span>
-            <strong>{metrics.blockchain.retrying?.toLocaleString("es-BO") ?? "—"}</strong>
-          </div>
-          <div><span>Confirmados última hora</span>
-            <strong>{metrics.blockchain.confirmedLastHour?.toLocaleString("es-BO") ?? "—"}</strong>
-          </div>
-          <div><span>Espera más antigua</span>
-            <strong>{typeof metrics.blockchain.oldestPendingSeconds === "number"
-              ? (metrics.blockchain.oldestPendingSeconds / 60).toFixed(1) + " min" : "—"}</strong>
-          </div>
+        <div className="stellar-kpi-grid">
+          <div className="stellar-kpi"><span>Confirmados</span><strong>{numberOrDash(metrics.blockchain.confirmed)}</strong></div>
+          <div className="stellar-kpi"><span>En proceso</span><strong>{metrics.blockchain.pending.toLocaleString("es-BO")}</strong></div>
+          <div className="stellar-kpi"><span>Con incidencias</span><strong>{numberOrDash(metrics.blockchain.failed)}</strong></div>
+          <div className="stellar-kpi"><span>Con reintentos</span><strong>{numberOrDash(metrics.blockchain.retrying)}</strong></div>
+          <div className="stellar-kpi"><span>Confirmados en 1 hora</span><strong>{numberOrDash(metrics.blockchain.confirmedLastHour)}</strong></div>
+          <div className="stellar-kpi"><span>Mayor tiempo de espera</span><strong>{
+            typeof metrics.blockchain.oldestPendingSeconds === "number"
+              ? (metrics.blockchain.oldestPendingSeconds / 60).toFixed(1)+" min" : "—"
+          }</strong></div>
         </div>
-        <p className="muted-copy" style={{padding:"0 1.25rem 1.25rem"}}>
-          Confirmar un hash en Stellar es asíncrono: 100 usuarios de la API no equivalen
-          a 100 transacciones confirmadas por segundo. Los indicadores ausentes muestran «—»
-          hasta que se despliegue la ampliación del backend.
-        </p>
       </section>
     </>}
     <PageFooter/>
@@ -158,7 +160,25 @@ export function DashboardPage({ onNavigate }: { onNavigate: (page: string) => vo
 
 export function PageFooter() {
   return <footer className="dashboard-footer">
-    <span>© 2026 DyxerSignature · Grupo Paz</span>
+    <span>© 2026 {presentation.product} · {presentation.provider}</span>
     <span><Icon name="shield" size={14}/> Evidencia SHA-256 y Stellar Testnet</span>
   </footer>;
+}
+
+function numberOrDash(value: number | undefined) {
+  return typeof value === "number" ? value.toLocaleString("es-BO") : "—";
+}
+
+function eventName(event: string) {
+  const labels: Record<string,string> = {
+    "CONTRACT_CREATED": "Contrato registrado",
+    "CONTRACT_CREATED_V1": "Contrato registrado",
+    "DOCUMENT_VERSION_DRAFT_UPLOADED": "Documento incorporado",
+    "DOCUMENT_VERSION_REVIEWED": "Revisión documental completada",
+    "DOCUMENT_VERSION_SIGNED": "Firma registrada",
+    "BLOCKCHAIN_CONFIRMED_AND_VERSION_ACTIVATED": "Documento verificado en Stellar",
+    "BLOCKCHAIN_CONFIRMED_HISTORICAL_VERSION": "Versión histórica verificada",
+    "CONTRACT_DELETED": "Contrato archivado"
+  };
+  return labels[event] ?? "Actualización contractual";
 }
