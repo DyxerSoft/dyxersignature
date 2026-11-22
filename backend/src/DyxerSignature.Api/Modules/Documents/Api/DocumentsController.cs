@@ -3,6 +3,7 @@ using System.Text.Json;
 using DyxerSignature.Api.Infrastructure.Persistence;
 using DyxerSignature.Api.Modules.Audit.Domain;
 using DyxerSignature.Api.Modules.Blockchain.Application;
+using DyxerSignature.Api.Modules.Blockchain.Domain;
 using DyxerSignature.Api.Modules.Contracts.Api;
 using DyxerSignature.Api.Modules.Documents.Application;
 using Microsoft.AspNetCore.Authorization;
@@ -56,7 +57,11 @@ public sealed class DocumentsController(
             }),
             HttpContext.TraceIdentifierToGuid()));
         await db.SaveChangesAsync(cancellationToken);
-        return Redirect(url);
+        return Ok(new
+        {
+            downloadUrl = url,
+            expiresAtUtc = DateTimeOffset.UtcNow.AddMinutes(5)
+        });
     }
 
     [HttpGet("contracts/{contractId:guid}/versions/{versionId:guid}/verify")]
@@ -86,10 +91,12 @@ public sealed class DocumentsController(
             Convert.FromHexString(version.DocumentHash));
         var anchor = await db.BlockchainAnchors.AsNoTracking()
             .SingleOrDefaultAsync(x => x.DocumentVersionId == version.Id, cancellationToken);
-        var onChain = await blockchainGateway.VerifyDocumentAsync(
-            version.DocumentHash,
-            anchor?.TransactionHash,
-            cancellationToken);
+        var onChain = anchor?.Status == BlockchainAnchorStatus.Confirmed
+            ? await blockchainGateway.VerifyDocumentAsync(
+                version.DocumentHash,
+                anchor.TransactionHash,
+                cancellationToken)
+            : new AnchorVerification(false, anchor?.LedgerNumber);
 
         db.AuditEvents.Add(new AuditEvent(
             contractId,
@@ -181,3 +188,4 @@ public sealed class DocumentsController(
         });
     }
 }
+

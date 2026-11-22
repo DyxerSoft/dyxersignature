@@ -1,122 +1,53 @@
-# REQ-DYXS-001 — Versionado documental con anclaje blockchain
+# REQ-DYXS-001 — Versionado documental y anclaje Stellar
 
-**Estado:** Implementado como vertical slice técnico inicial.
+**Estado:** APIs, frontend y adaptador Testnet implementados en `feat/stellar-hackathon-mvp`. El backend CI y el smoke test Testnet pasan. La ejecución completa del flujo con Compose y un PDF sigue pendiente.
 
 ## Objetivo
 
-Demostrar de extremo a extremo que un contrato lógico puede mantener múltiples versiones documentales inmutables, cada una con SHA-256, Evidence Manifest y Blockchain Anchor, manteniendo solo una versión vigente.
+Mantener versiones documentales inmutables de un contrato lógico, con SHA-256, evidencia, firmantes, auditoría y anclaje verificable. Solo una versión confirmada puede convertirse en vigente. Una corrección crea una versión nueva.
 
 ## Flujo
 
 ```text
 Create Contract
-  -> Upload signed PDF
-  -> Local immutable storage
-  -> SHA-256
-  -> Evidence Manifest
-  -> Outbox
-  -> Blockchain Gateway
-  -> Confirm anchor
-  -> Activate version
+  -> Upload PDF to private SeaweedFS S3
+  -> SHA-256 of stored bytes
+  -> Review the displayed hash
+  -> Record signer event and evidence
+  -> Persist idempotent Outbox message
+  -> Prepare and persist signed Stellar envelope
+  -> Submit asynchronously to Stellar Testnet
+  -> Verify transaction hash and Manage Data value
+  -> Activate version and issue authorized temporary download URL
 ```
 
-Cuando existe una versión vigente:
+Stellar recibe solo el SHA-256 hexadecimal del PDF final; no se publican archivos, datos del contrato ni datos personales.
 
-```text
-V1 ACTIVE
-  -> create V2
-  -> V2 blockchain confirmed
-  -> V1 SUPERSEDED
-  -> V2 ACTIVE
-```
+## Implementación y evidencia
 
-## Criterios de aceptación
+| Capacidad | Código | Evidencia disponible |
+|---|---|---|
+| Contratos, versiones, correcciones, revisión, firma y auditoría | Controllers modulares, entidades EF Core y migraciones | Build y pruebas .NET pasan en CI `45034897263` |
+| Dashboard persistido y comparación de hashes | `/api/v1/dashboard` y `/documents/compare` | CI de backend pasa; no hay ejecución local por ausencia de Docker/.NET |
+| Outbox idempotente, leases y retry del mismo envelope | `BlockchainOutboxWorker` + entidad `OutboxMessage` | CI de backend pasa |
+| Stellar Testnet y verificación de operación `Manage Data` | `StellarBlockchainGateway` | Smoke CI `45034897292` pasó; [transaction hash en Horizon](https://horizon-testnet.stellar.org/transactions/c3face26a35ba4aaa2b72378e7672a410722941f762556ca053a2916c1b249b3), ledger `5867071` |
+| SeaweedFS S3 privado y URL prefirmada | `S3DocumentStorage` | Compilación Docker pasa; descarga desde Compose aún no probada |
+| Flujo de navegador con PDF real y firma | `frontend/src/features/contracts/ContractWorkbench.tsx` | Build de frontend local pasa; recorrido de navegador aún no probado |
 
-- [x] Crear contrato lógico.
-- [x] Adjuntar PDF firmado de prueba.
-- [x] Rechazar streams que no comiencen con firma PDF.
-- [x] Guardar cada PDF en una ruta distinta por contrato y versión.
-- [x] Calcular SHA-256 sobre bytes guardados.
-- [x] Generar Evidence Manifest determinista.
-- [x] Calcular SHA-256 del Evidence Manifest.
-- [x] Crear BlockchainAnchor por versión.
-- [x] Crear mensaje Outbox en la misma persistencia operacional.
-- [x] Worker asíncrono procesa el anchor.
-- [x] Gateway simulado para smoke test sin infraestructura externa.
-- [x] Gateway Nethereum para Anvil/Polygon mediante configuración.
-- [x] Activar la versión solo después de confirmación.
-- [x] Marcar la versión activa previa como SUPERSEDED.
-- [x] Exponer histórico completo por contrato.
-- [x] Persistir auditoría de creación, recepción y activación.
+## Endpoints
 
-## API de prueba
+- `POST /api/v1/contracts` — crear contrato.
+- `POST /api/v1/contracts/{id}/versions` — cargar PDF como nueva versión.
+- `POST /api/v1/contracts/{id}/versions/{versionId}/review` — confirmar hash revisado.
+- `POST /api/v1/contracts/{id}/versions/{versionId}/sign` — registrar firmante y encolar Stellar.
+- `GET /api/v1/contracts/{id}` — detalle, versiones, estados y transaction hashes.
+- `GET /api/v1/contracts/{id}/documents/compare` — comparar hashes y metadatos.
+- `GET /api/v1/contracts/{id}/versions/{versionId}/verify` — recalcular PDF y verificar transacción.
+- `GET /api/v1/documents/{versionId}/download` — obtener enlace S3 temporal tras autenticación.
 
-### Crear contrato
+## Límites
 
-```http
-POST /api/v1/contracts
-Content-Type: application/json
+- El evento de firma acredita una declaración del usuario autenticado; no es una firma electrónica cualificada ni valida identidad mediante certificado.
+- La comparación informa cambios de SHA-256/metadatos; no produce un diff visual de PDF.
+- El smoke Testnet prueba el adaptador con un hash sintético. El anclaje de un documento de demostración requiere ejecutar Compose con una cuenta Testnet configurada.
 
-{
-  "businessReference": "GP-TEST-0001"
-}
-```
-
-### Adjuntar primera versión
-
-```bash
-curl -X POST \
-  -F "file=@contrato-v1.pdf;type=application/pdf" \
-  http://localhost:8080/api/v1/contracts/{contractId}/versions/signed
-```
-
-### Adjuntar corrección
-
-```bash
-curl -X POST \
-  -F "file=@contrato-v2.pdf;type=application/pdf" \
-  -F "correctionReason=Corrección de datos del cliente" \
-  http://localhost:8080/api/v1/contracts/{contractId}/versions/signed
-```
-
-### Consultar estado
-
-```http
-GET /api/v1/contracts/{contractId}
-```
-
-Esperado luego del worker:
-
-```text
-V2 ACTIVE
-V1 SUPERSEDED
-```
-
-## Modos blockchain
-
-### Simulated
-
-Modo por defecto en Development. Permite validar el flujo sin depender de RPC.
-
-### Anvil
-
-1. Ejecutar `anvil`.
-2. Desplegar `DocumentAnchor.sol`:
-
-```bash
-cd backend/blockchain
-forge create src/DocumentAnchor.sol:DocumentAnchor \
-  --rpc-url http://127.0.0.1:8545 \
-  --private-key <ANVIL_PRIVATE_KEY>
-```
-
-3. Configurar `Blockchain__Mode=Rpc`, `Blockchain__ContractAddress` y `Blockchain__PrivateKey`.
-4. Reiniciar API y repetir el flujo.
-
-## Limitaciones intencionales del slice
-
-- La firma digital real todavía no está integrada; se recibe un PDF ya firmado.
-- `EnsureCreated` se usa únicamente en Development para el PoC. Antes de staging se reemplazará por migraciones EF Core.
-- El storage local se sustituirá por object storage antes de producción.
-- El worker está diseñado para una instancia. El escalado horizontal requerirá claim/locking de Outbox.
-- La recuperación de una TX minada cuando el proceso cae antes de persistir el receipt se endurecerá consultando eventos on-chain.

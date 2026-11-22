@@ -42,6 +42,21 @@ input {
   padding: 0.65rem 0.75rem;
 }
 
+select {
+  width: 100%;
+  margin-top: 0.35rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  padding: 0.65rem 0.75rem;
+}
+
+.button-secondary {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
 code {
   overflow-wrap: anywhere;
   font-size: 0.82rem;
@@ -124,8 +139,47 @@ code {
   padding: 1.5rem;
 }
 
+.dashboard {
+  margin-top: 2rem;
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+  gap: 0.85rem;
+}
+
+.metric-card {
+  display: grid;
+  gap: 0.35rem;
+  min-height: 120px;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.metric-card span,
+.metric-card small,
+.muted-copy {
+  color: var(--color-text-muted);
+}
+
+.metric-card strong {
+  font-size: 1.8rem;
+}
+
+.metric-card small {
+  font-size: 0.78rem;
+}
+
 .section-heading h2 {
   margin: 0.25rem 0 1.25rem;
+}
+
+.section-heading p {
+  margin: 0 0 1rem;
 }
 
 .form-row {
@@ -136,8 +190,85 @@ code {
   margin-top: 1rem;
 }
 
-.form-row:first-of-type {
-  grid-template-columns: minmax(240px, 1fr) auto;
+.contract-create-form,
+.upload-form {
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) auto;
+}
+
+.contract-picker {
+  max-width: 620px;
+  margin: 1rem 0;
+}
+
+.signer-form {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+}
+
+.signer-form .form-row {
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
+}
+
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+
+.history-tools {
+  display: grid;
+  gap: 0.8rem;
+  margin-top: 1.5rem;
+  padding: 1rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+}
+
+.compare-form {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) minmax(110px, 150px) minmax(110px, 150px) auto;
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.compare-form strong {
+  align-self: center;
+}
+
+.comparison-result,
+.success-message,
+.verification-ok {
+  color: var(--color-success);
+}
+
+.success-message,
+.error-panel {
+  padding: 0.8rem 1rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+}
+
+.verification-failed,
+.error-message,
+.error-panel {
+  color: var(--color-danger);
+}
+
+.error-panel p {
+  margin-bottom: 0;
+}
+
+.session-status {
+  margin-top: 1.5rem;
+}
+
+.signer-list {
+  margin: 0;
+  padding-left: 1.25rem;
 }
 
 .form-row label {
@@ -200,7 +331,12 @@ code {
 
   .form-row,
   .form-row:first-of-type,
+  .contract-create-form,
+  .upload-form,
+  .signer-form .form-row,
+  .compare-form,
   .contract-summary {
     grid-template-columns: 1fr;
   }
 }
+

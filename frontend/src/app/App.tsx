@@ -1,35 +1,49 @@
+import { useEffect, useState } from "react";
 import { ContractWorkbench } from "../features/contracts/ContractWorkbench";
-
-const modules = [
-  ["Contratos", "Estado lógico y versión oficial vigente"],
-  ["Versiones", "Histórico inmutable de documentos firmados"],
-  ["Auditoría", "Timeline completo de eventos y correcciones"],
-  ["Blockchain", "Anclajes Polygon y confirmaciones"],
-  ["Verificación", "Validación de integridad mediante SHA-256"]
-];
+import { Dashboard } from "../features/dashboard/Dashboard";
+import { initializeDemoSession } from "../services/api/client";
 
 export function App() {
+  const [sessionReady, setSessionReady] = useState(false);
+  const [sessionError, setSessionError] = useState("");
+
+  useEffect(() => {
+    void initializeDemoSession()
+      .then(() => setSessionReady(true))
+      .catch((cause: unknown) => {
+        setSessionError(cause instanceof Error ? cause.message : "No se pudo iniciar la sesión de demostración.");
+      });
+  }, []);
+
   return (
     <main className="app-shell">
       <header className="app-header">
         <div>
           <span className="eyebrow">Grupo Paz</span>
           <h1>DyxerSignature</h1>
-          <p>Firma, evidencia y trazabilidad documental.</p>
+          <p>Contratos, firmas y evidencia documental verificable.</p>
         </div>
-        <span className="status-pill">MVP técnico</span>
+        <span className="status-pill">Stellar Testnet</span>
       </header>
 
       <section className="module-grid" aria-label="Módulos principales">
-        {modules.map(([title, description]) => (
-          <article className="module-card" key={title}>
-            <h2>{title}</h2>
-            <p>{description}</p>
-          </article>
-        ))}
+        <article className="module-card"><h2>Dashboard</h2><p>Métricas calculadas desde PostgreSQL.</p></article>
+        <article className="module-card"><h2>Contratos</h2><p>Versiones, motivos de corrección e histórico.</p></article>
+        <article className="module-card"><h2>Firmas</h2><p>Revisión explícita y trazabilidad de firmantes.</p></article>
+        <article className="module-card"><h2>Verificación</h2><p>SHA-256 del PDF y transacción Stellar.</p></article>
       </section>
 
-      <ContractWorkbench />
+      {!sessionReady && !sessionError && <p className="muted-copy session-status">Iniciando sesión de demostración…</p>}
+      {sessionError && (
+        <div className="error-panel" role="alert">
+          <strong>Sesión no disponible</strong>
+          <p>{sessionError}</p>
+          <p>El token de demostración solo se habilita cuando la API ASP.NET Core se ejecuta en Development.</p>
+        </div>
+      )}
+      {sessionReady && <Dashboard />}
+      {sessionReady && <ContractWorkbench />}
     </main>
   );
 }
+

@@ -4,11 +4,11 @@
 
 1. **Monolito modular:** un solo deploy, separación fuerte por dominio.
 2. **Feature-first:** código agrupado por módulo, no una carpeta global gigante de Controllers/Services/Repositories.
-3. **Dominio independiente:** entidades y reglas no dependen de EF Core, Nethereum ni HTTP.
+3. **Dominio independiente:** entidades y reglas no dependen de EF Core, Stellar SDK ni HTTP.
 4. **Infraestructura por adaptadores:** integraciones externas detrás de interfaces.
 5. **Append-only para evidencia:** no se actualizan hashes, PDFs firmados ni receipts confirmados.
 6. **Idempotencia obligatoria:** reintentar no debe duplicar anclajes.
-7. **Outbox:** Polygon nunca debe formar parte de la transacción HTTP del usuario.
+7. **Outbox:** Stellar nunca debe formar parte de la transacción HTTP del usuario.
 8. **UTC:** persistencia temporal exclusivamente UTC.
 9. **Problem Details:** errores HTTP con RFC 9457/ProblemDetails; no excepciones crudas.
 10. **Correlación:** cada flujo debe transportar `correlation_id`.
@@ -36,22 +36,23 @@ No se permite que un módulo modifique directamente las tablas propiedad de otro
 - EF Core para persistencia.
 - Índice único parcial: una sola versión `ACTIVE` por `contract_id`.
 - Migraciones versionadas en Git.
-- Nunca almacenar private keys de Polygon en tablas de aplicación.
+- Nunca almacenar semillas/secretos de Stellar en tablas de aplicación.
 - PDFs en object storage; la DB conserva referencias y hashes.
 
 ## Blockchain
 
-El módulo Blockchain debe exponer una abstracción, no Nethereum al resto del sistema:
+El módulo Blockchain debe exponer una abstracción, no el SDK Stellar al resto del sistema:
 
 ```csharp
 IBlockchainGateway
-  AnchorDocumentAsync(...)
-  GetAnchorAsync(...)
+  PrepareDocumentAsync(hash, ...)
+  SubmitPreparedDocumentAsync(envelope, ...)
+  VerifyDocumentAsync(hash, transactionHash, ...)
 ```
 
 Estados: `PENDING, SUBMITTED, CONFIRMED, FAILED`.
 
-El contrato Solidity no controla cuál versión está vigente. Esa decisión pertenece al dominio de contratos en PostgreSQL.
+El estado actual y el versionado pertenecen a PostgreSQL. Stellar Testnet recibe únicamente el hash SHA-256 del PDF final.
 
 ## Seguridad
 
@@ -69,5 +70,6 @@ El contrato Solidity no controla cuál versión está vigente. Esa decisión per
 - TreatWarningsAsErrors en CI.
 - Tests unitarios para invariantes.
 - Tests de integración con PostgreSQL real/container.
-- Tests de contrato para Polygon en Anvil/Amoy.
+- Smoke test real de Stellar Testnet con una clave efímera, fuera de las pruebas unitarias normales.
 - SAST, dependency scanning y secret scanning en CI.
+
