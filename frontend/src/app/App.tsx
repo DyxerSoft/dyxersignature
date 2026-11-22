@@ -128,10 +128,10 @@ export function App() {
             className={`profile-mini ${route === "Perfil" ? "profile-mini--active" : ""}`}
             onClick={() => navigate("Perfil")}
           >
-            <div className="profile-avatar">DM</div>
+            <div className="profile-avatar">DE</div>
             <div>
-              <strong>Diego Murillo</strong>
-              <span>Superadmin</span>
+              <strong>Cuenta de demostración</strong>
+              <span>Acceso MVP</span>
             </div>
             <Icon name="chevron" size={16} />
           </button>
@@ -163,10 +163,10 @@ export function App() {
             </button>
             <div className="top-divider" />
             <button className="top-profile" onClick={() => navigate("Perfil")}>
-              <div className="profile-avatar">DM</div>
+              <div className="profile-avatar">DE</div>
               <span>
-                <strong>Diego Murillo</strong>
-                <small>Superadmin</small>
+                <strong>Cuenta de demostración</strong>
+                <small>Acceso MVP</small>
               </span>
               <Icon name="chevron" size={17} />
             </button>

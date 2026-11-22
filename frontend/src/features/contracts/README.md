@@ -1,6 +1,7 @@
-# Contracts feature
+# Contratos — componente OCR legado (fuera del MVP desplegable)
 
-Conecta el mockup existente con el dashboard y las APIs autenticadas de contratos. Incluye alta, carga de versión, motivo de corrección, revisión por SHA-256, firma declarativa, histórico, comparación, firmantes, verificación y descarga autorizada.
+Este directorio conserva el taller anterior `ContractWorkbench.tsx` y su cliente `api.ts`, pero **no está montado en la navegación actual**. Sus endpoints `POST /contracts/{id}/versions/signed` y `/contracts/{id}/ingest/*` no están implementados por el backend Stellar incluido en `deploy/dyx-demo/compose.yml`; el BFF OCR tampoco se despliega en esa pila.
 
-Las solicitudes HTTP se mantienen en `api.ts` y usan el cliente común `services/api/client.ts`. Las descargas reciben una URL prefirmada de corta duración después de que la API valida JWT y registra auditoría.
+Para el MVP de la hackatón, el código que sí consume la API .NET actual está en `frontend/src/features/stellar`. El listado paginado, las versiones PDF, las firmas, el Dashboard y la auditoría se muestran desde las páginas administrativas conectadas a ese flujo.
 
+No reactivar el taller OCR legado ni las funciones `frontend/src/features/documents/api.ts` hasta implementar sus endpoints y probar la integración de autenticación, red, almacenamiento y contratos.
