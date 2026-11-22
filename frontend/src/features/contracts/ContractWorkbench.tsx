@@ -1,13 +1,33 @@
 import { FormEvent, useEffect, useState } from "react";
-import { createContract, getContract, uploadSignedVersion } from "./api";
-import type { ContractDetail } from "./types";
+import {
+  createContract,
+  getContract,
+  uploadSignedVersion,
+  uploadScanForOcr,
+  getDigitizationJob
+} from "./api";
+import type { ContractDetail, DigitizationJobDetail, DetectedSignature } from "./types";
 
 export function ContractWorkbench() {
   const [businessReference, setBusinessReference] = useState("GP-TEST-0001");
   const [contractId, setContractId] = useState("");
   const [contract, setContract] = useState<ContractDetail | null>(null);
+
+  // REQ-DYXS-001 states
   const [file, setFile] = useState<File | null>(null);
   const [reason, setReason] = useState("");
+
+  // REQ-DYXS-002 OCR states
+  const [scanFile, setScanFile] = useState<File | null>(null);
+  const [scanReason, setScanReason] = useState("");
+  const [digitizationJob, setDigitizationJob] = useState<DigitizationJobDetail | null>(null);
+  const [activeTab, setActiveTab] = useState<"ocr" | "pdf">("ocr");
+
+  // Visualizador y Zoom states
+  const [selectedSignatureForZoom, setSelectedSignatureForZoom] = useState<DetectedSignature | null>(null);
+  const [viewerDocUrl, setViewerDocUrl] = useState<string | null>(null);
+  const [viewerDocTitle, setViewerDocTitle] = useState<string | null>(null);
+
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -43,7 +63,7 @@ export function ContractWorkbench() {
     }
   }
 
-  async function handleUpload(event: FormEvent) {
+  async function handleUploadPdf(event: FormEvent) {
     event.preventDefault();
     if (!file || !contractId) return;
 
@@ -62,12 +82,36 @@ export function ContractWorkbench() {
     }
   }
 
+  async function handleUploadScan(event: FormEvent) {
+    event.preventDefault();
+    if (!scanFile || !contractId) return;
+
+    setBusy(true);
+    setError("");
+
+    try {
+      const res = await uploadScanForOcr(contractId, scanFile, scanReason || undefined);
+      setScanFile(null);
+      setScanReason("");
+
+      const jobData = await getDigitizationJob(contractId, res.digitizationJobId);
+      setDigitizationJob(jobData);
+      setViewerDocUrl(`/api/v1/contracts/${contractId}/ingest/${res.digitizationJobId}/file`);
+      setViewerDocTitle(`Documento Escaneado Original (${res.fileName})`);
+      await refresh(contractId);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Fallo durante la digitalización OCR.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <section className="workbench" aria-labelledby="workbench-title">
       <div className="section-heading">
         <div>
-          <span className="eyebrow">REQ-DYXS-001</span>
-          <h2 id="workbench-title">Prueba de versionado y blockchain</h2>
+          <span className="eyebrow">DyxerSignature Hub</span>
+          <h2 id="workbench-title">Módulo de Ingesta, OCR y Anclaje Blockchain</h2>
         </div>
         {contract && <span className="status-pill">{contract.status}</span>}
       </div>
@@ -78,36 +122,287 @@ export function ContractWorkbench() {
           <input
             value={businessReference}
             onChange={(event) => setBusinessReference(event.target.value)}
+            placeholder="Ej: GP-CONTRATO-001"
             required
           />
         </label>
-        <button disabled={busy} type="submit">Crear contrato</button>
+        <button disabled={busy} type="submit">
+          {contractId ? "Crear nuevo contrato" : "Crear contrato"}
+        </button>
       </form>
 
-      {contractId && (
-        <form className="form-row" onSubmit={handleUpload}>
-          <label>
-            PDF firmado de prueba
-            <input
-              accept="application/pdf,.pdf"
-              onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-              type="file"
-              required
-            />
-          </label>
-          <label>
-            Motivo de corrección
-            <input
-              value={reason}
-              onChange={(event) => setReason(event.target.value)}
-              placeholder="Solo para V2+"
-            />
-          </label>
-          <button disabled={busy || !file} type="submit">Crear versión</button>
-        </form>
-      )}
+      <div style={{ marginTop: "1.5rem" }}>
+        <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
+          <button
+            type="button"
+            className={activeTab === "ocr" ? "status-pill" : "button-secondary"}
+            style={{
+              cursor: "pointer",
+              background: activeTab === "ocr" ? "var(--color-primary)" : "var(--color-surface)",
+              color: activeTab === "ocr" ? "#fff" : "inherit",
+              border: "1px solid var(--color-border)",
+              padding: "0.5rem 1rem",
+              borderRadius: "var(--radius-sm)",
+              fontWeight: 600
+            }}
+            onClick={() => setActiveTab("ocr")}
+          >
+            📷 Digitalización con PaddleOCR (REQ-DYXS-002)
+          </button>
+          <button
+            type="button"
+            className={activeTab === "pdf" ? "status-pill" : "button-secondary"}
+            style={{
+              cursor: "pointer",
+              background: activeTab === "pdf" ? "var(--color-primary)" : "var(--color-surface)",
+              color: activeTab === "pdf" ? "#fff" : "inherit",
+              border: "1px solid var(--color-border)",
+              padding: "0.5rem 1rem",
+              borderRadius: "var(--radius-sm)",
+              fontWeight: 600
+            }}
+            onClick={() => setActiveTab("pdf")}
+          >
+            📄 Subir PDF firmado directo (REQ-DYXS-001)
+          </button>
+        </div>
+
+        {!contractId ? (
+          <div style={{
+            padding: "1.25rem",
+            background: "#f8fafc",
+            borderRadius: "var(--radius-sm)",
+            border: "1px dashed var(--color-border)",
+            marginBottom: "1rem"
+          }}>
+            <p style={{ margin: 0, color: "var(--color-text-muted)", fontSize: "0.95rem" }}>
+              💡 Para comenzar, ingresa una <strong>Referencia de negocio</strong> en el campo de arriba y haz clic en <strong>"Crear contrato"</strong>. A continuación podrás seleccionar tu archivo escaneado o imagen para procesarlo con <strong>PaddleOCR</strong>.
+            </p>
+          </div>
+        ) : activeTab === "ocr" ? (
+            <form className="form-row" onSubmit={handleUploadScan}>
+              <label>
+                Imagen o escaneo (PDF, PNG, JPG)
+                <input
+                  accept="application/pdf,image/png,image/jpeg,.pdf,.png,.jpg,.jpeg"
+                  onChange={(event) => setScanFile(event.target.files?.[0] ?? null)}
+                  type="file"
+                  required
+                />
+              </label>
+              <label>
+                Motivo / Comentarios
+                <input
+                  value={scanReason}
+                  onChange={(event) => setScanReason(event.target.value)}
+                  placeholder="Ej: Contrato físico digitalizado en ventanilla"
+                />
+              </label>
+              <button disabled={busy || !scanFile} type="submit">
+                {busy ? "Procesando PaddleOCR..." : "Digitalizar con PaddleOCR"}
+              </button>
+            </form>
+          ) : (
+            <form className="form-row" onSubmit={handleUploadPdf}>
+              <label>
+                PDF firmado de prueba
+                <input
+                  accept="application/pdf,.pdf"
+                  onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+                  type="file"
+                  required
+                />
+              </label>
+              <label>
+                Motivo de corrección
+                <input
+                  value={reason}
+                  onChange={(event) => setReason(event.target.value)}
+                  placeholder="Solo para V2+"
+                />
+              </label>
+              <button disabled={busy || !file} type="submit">Crear versión</button>
+            </form>
+          )}
+        </div>
 
       {error && <p className="error-message" role="alert">{error}</p>}
+
+      {digitizationJob && (
+        <div className="ocr-preview-card">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+            <h3 style={{ margin: 0, fontSize: "1rem" }}>
+              Resultado de Digitalización OCR (Job {digitizationJob.digitizationJobId.slice(0, 8)})
+            </h3>
+            <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+              <button
+                type="button"
+                className="button-secondary"
+                style={{ fontSize: "0.8rem", padding: "0.25rem 0.5rem" }}
+                onClick={() => {
+                  setViewerDocUrl(`/api/v1/contracts/${contractId}/ingest/${digitizationJob.digitizationJobId}/file`);
+                  setViewerDocTitle(`Escaneo Original (Job ${digitizationJob.digitizationJobId.slice(0, 8)})`);
+                }}
+              >
+                📄 Ver Escaneo Completo
+              </button>
+              <span className={`status-pill ${digitizationJob.status === "Failed" ? "pill-danger" : ""}`}>{digitizationJob.status}</span>
+              {digitizationJob.status !== "Failed" && (
+                <span className={`status-pill ${digitizationJob.requiresReview ? "pill-warning" : "pill-success"}`}>
+                  Confianza: {(digitizationJob.confidenceScore * 100).toFixed(1)}% {digitizationJob.requiresReview ? "⚠️ Requiere Revisión" : "✅ Válido"}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {digitizationJob.errorMessage && (
+            <div style={{ marginTop: "0.5rem", padding: "0.75rem", background: "#fef2f2", border: "1px solid #f87171", borderRadius: "4px", color: "#991b1b", fontSize: "0.85rem" }}>
+              <strong>Error en digitalización:</strong> {digitizationJob.errorMessage}
+            </div>
+          )}
+
+          {digitizationJob.extractedTextSummary && (
+            <div style={{ marginTop: "0.5rem" }}>
+              <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>Texto digitalizado (PP-OCRv4):</span>
+              <p style={{ fontSize: "0.85rem", background: "var(--color-surface)", padding: "0.75rem", borderRadius: "4px", whiteSpace: "pre-wrap", maxHeight: "120px", overflowY: "auto", border: "1px solid var(--color-border)" }}>
+                {digitizationJob.extractedTextSummary}
+              </p>
+            </div>
+          )}
+
+          {digitizationJob.signaturesDetected && digitizationJob.signaturesDetected.length > 0 && (
+            <div style={{ marginTop: "1rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <strong style={{ fontSize: "0.9rem" }}>
+                  ✍️ Firmas Manuscritas Detectadas ({digitizationJob.signaturesDetected.length}):
+                </strong>
+                <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
+                  (Haz clic en cualquier firma para ampliarla en alta resolución)
+                </span>
+              </div>
+              <div className="signatures-gallery">
+                {digitizationJob.signaturesDetected.map((sig) => {
+                  const cropUrl = `/api/v1/contracts/${contractId}/ingest/${digitizationJob.digitizationJobId}/signatures/${sig.id}/file`;
+                  return (
+                    <div key={sig.id} className="signature-crop-item" onClick={() => setSelectedSignatureForZoom(sig)}>
+                      <img
+                        src={cropUrl}
+                        alt={`Firma página ${sig.pageNumber}`}
+                        loading="lazy"
+                        title="Haz clic para ampliar"
+                      />
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "0.25rem" }}>
+                        <span style={{ fontSize: "0.8rem", fontWeight: 600 }}>
+                          Página {sig.pageNumber}
+                        </span>
+                        <span className="status-pill pill-success" style={{ fontSize: "0.75rem" }}>
+                          {(sig.confidence * 100).toFixed(0)}%
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        className="button-secondary"
+                        style={{ width: "100%", marginTop: "0.5rem", fontSize: "0.75rem", padding: "0.3rem" }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedSignatureForZoom(sig);
+                        }}
+                      >
+                        🔍 Ver en tamaño completo
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Visor Embebido de Documento / PDF */}
+      {viewerDocUrl && (
+        <section className="document-viewer-card" aria-label="Visor de documento">
+          <div className="document-viewer-header">
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <span style={{ fontSize: "1.2rem" }}>📄</span>
+              <strong>{viewerDocTitle ?? "Visor de Documento"}</strong>
+            </div>
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <a
+                href={viewerDocUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="button-secondary"
+                style={{ fontSize: "0.8rem", textDecoration: "none", padding: "0.3rem 0.6rem" }}
+              >
+                Abrir en pestaña nueva ↗
+              </a>
+              <button
+                type="button"
+                className="button-secondary"
+                style={{ fontSize: "0.8rem", padding: "0.3rem 0.6rem" }}
+                onClick={() => setViewerDocUrl(null)}
+              >
+                Cerrar visor ✕
+              </button>
+            </div>
+          </div>
+          <iframe
+            src={viewerDocUrl}
+            className="document-viewer-iframe"
+            title={viewerDocTitle ?? "Visor de Documento"}
+          />
+        </section>
+      )}
+
+      {/* Modal Lightbox de Zoom para Firma Recortada */}
+      {selectedSignatureForZoom && digitizationJob && (
+        <div className="lightbox-backdrop" onClick={() => setSelectedSignatureForZoom(null)}>
+          <div className="lightbox-content" onClick={(e) => e.stopPropagation()}>
+            <div className="lightbox-header">
+              <div>
+                <h3 style={{ margin: 0, fontSize: "1.1rem" }}>
+                  Firma Manuscrita Detectada
+                </h3>
+                <small style={{ color: "var(--color-text-muted)" }}>
+                  Página {selectedSignatureForZoom.pageNumber} • Confianza: {(selectedSignatureForZoom.confidence * 100).toFixed(1)}%
+                </small>
+              </div>
+              <button
+                type="button"
+                className="button-secondary"
+                style={{ cursor: "pointer", fontSize: "1rem", padding: "0.25rem 0.6rem" }}
+                onClick={() => setSelectedSignatureForZoom(null)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="lightbox-img-wrapper">
+              <img
+                src={`/api/v1/contracts/${contractId}/ingest/${digitizationJob.digitizationJobId}/signatures/${selectedSignatureForZoom.id}/file`}
+                alt="Firma ampliada en alta resolución"
+                className="lightbox-img"
+              />
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f8fafc", padding: "0.75rem", borderRadius: "var(--radius-sm)" }}>
+              <div>
+                <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)", display: "block" }}>Coordenadas (Bounding Box):</span>
+                <code style={{ fontSize: "0.8rem" }}>{selectedSignatureForZoom.boundingBox}</code>
+              </div>
+              <a
+                href={`/api/v1/contracts/${contractId}/ingest/${digitizationJob.digitizationJobId}/signatures/${selectedSignatureForZoom.id}/file`}
+                download={`firma_pag_${selectedSignatureForZoom.pageNumber}.png`}
+                className="status-pill"
+                style={{ textDecoration: "none", background: "var(--color-primary)", color: "#fff", cursor: "pointer" }}
+              >
+                📥 Descargar PNG original
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
 
       {contract && (
         <>
@@ -127,7 +422,20 @@ export function ContractWorkbench() {
               <article className="version-card" key={version.id}>
                 <div className="version-card__header">
                   <strong>V{version.versionNumber}</strong>
-                  <span className="status-pill">{version.status}</span>
+                  <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                    <button
+                      type="button"
+                      className="button-secondary"
+                      style={{ fontSize: "0.75rem", padding: "0.2rem 0.5rem" }}
+                      onClick={() => {
+                        setViewerDocUrl(`/api/v1/contracts/${contract.id}/versions/${version.id}/file`);
+                        setViewerDocTitle(`Versión ${version.versionNumber} - ${contract.businessReference} (PDF Oficial)`);
+                      }}
+                    >
+                      📄 Ver PDF Oficial
+                    </button>
+                    <span className="status-pill">{version.status}</span>
+                  </div>
                 </div>
                 <dl>
                   <dt>SHA-256</dt>
@@ -140,7 +448,7 @@ export function ContractWorkbench() {
                   <dd>{version.blockchain?.blockNumber ?? "—"}</dd>
                   {version.correctionReason && (
                     <>
-                      <dt>Sustituida por</dt>
+                      <dt>Motivo / Origen</dt>
                       <dd>{version.correctionReason}</dd>
                     </>
                   )}
