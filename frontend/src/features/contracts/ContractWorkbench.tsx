@@ -72,11 +72,21 @@ export function ContractWorkbench() {
 
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [announcement, setAnnouncement] = useState("");
 
   async function refresh(id = contractId) {
     if (!id) return;
     const data = await getContract(id);
-    setContract(data);
+    setContract((prev) => {
+      if (prev && prev.id === data.id) {
+        const previousConfirmed = prev.versions.filter((v) => v.blockchain?.status === "Confirmed").length;
+        const currentConfirmed = data.versions.filter((v) => v.blockchain?.status === "Confirmed").length;
+        if (currentConfirmed > previousConfirmed) {
+          setAnnouncement(`El contrato ${data.businessReference} ha sido anclado y confirmado en la blockchain.`);
+        }
+      }
+      return data;
+    });
   }
 
   useEffect(() => {
@@ -212,6 +222,7 @@ export function ContractWorkbench() {
       setDigitizationJob(jobData);
       setViewerDocUrl(`/api/v1/contracts/${contractId}/ingest/${res.digitizationJobId}/file`);
       setViewerDocTitle(`Documento Escaneado Original (${res.fileName})`);
+      setAnnouncement(`Digitalización OCR completada. Se detectaron ${jobData.signaturesDetected?.length ?? 0} firmas manuscritas.`);
       await refresh(contractId);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Fallo durante la digitalización OCR.");
@@ -225,6 +236,9 @@ export function ContractWorkbench() {
 
   return (
     <section className="workbench" aria-labelledby="workbench-title">
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        {announcement}
+      </div>
       <div className="section-heading">
         <div>
           <span className="eyebrow">DyxerSignature Hub</span>
