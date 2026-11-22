@@ -1,0 +1,69 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: dyxersignature
+      POSTGRES_USER: dyxersignature
+      POSTGRES_PASSWORD: dyxersignature_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - dyxersignature_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dyxersignature -d dyxersignature"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  ocr:
+    build:
+      context: ./backend/ocr
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - paddle_models:/root/.paddlex
+      - paddle_models_ocr:/root/.paddleocr
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK: "True"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=dyxersignature;Username=dyxersignature;Password=dyxersignature_dev"
+      ASPNETCORE_ENVIRONMENT: "Development"
+      Blockchain__Mode: "Simulated"
+      Ocr__Mode: "Http"
+      Ocr__ServiceUrl: "http://ocr:8000"
+      Ingestion__ConfidenceThreshold: "0.85"
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./.data/documents:/app/.data/documents
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ocr:
+        condition: service_started
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      VITE_PROXY_TARGET: "http://backend:8080"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  dyxersignature_postgres:
+  paddle_models:
+  paddle_models_ocr:
