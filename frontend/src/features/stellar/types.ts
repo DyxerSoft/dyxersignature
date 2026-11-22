@@ -55,7 +55,9 @@ export type DashboardMetrics = {
   recentActivity?: {
     contractId: string;
     businessReference: string;
+    title?: string;
     eventType: string;
+    eventCount?: number;
     occurredAtUtc: string;
   }[];
   contracts: {
