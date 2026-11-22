@@ -14,9 +14,18 @@ export async function apiRequest<T>(
   });
 
   if (!response.ok) {
-    throw new Error(response.status === 502
-      ? "La API no está disponible. Verifica que el servidor esté iniciado y vuelve a intentarlo."
-      : `La solicitud no se completó (HTTP ${response.status}).`);
+    let message = `HTTP ${response.status}`;
+    try {
+      const errorJson = await response.json();
+      if (errorJson?.detail) {
+        message = errorJson.detail;
+      } else if (errorJson?.title) {
+        message = errorJson.title;
+      }
+    } catch {
+      // Fallback to HTTP status
+    }
+    throw new Error(message);
   }
 
   return response.json() as Promise<T>;

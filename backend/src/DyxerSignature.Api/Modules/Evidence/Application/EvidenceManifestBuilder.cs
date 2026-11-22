@@ -37,6 +37,7 @@ public sealed class EvidenceManifestBuilder
                 writer.WriteString("previousDocumentSha256", previousDocumentHash);
             else
                 writer.WriteNull("previousDocumentSha256");
+
             writer.WriteEndObject();
         }
 
