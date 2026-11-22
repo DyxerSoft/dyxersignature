@@ -306,9 +306,24 @@ export function ContractWorkbench() {
       )}
 
       <div style={{ marginTop: "1.5rem" }}>
-        <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
+        <div
+          role="tablist"
+          aria-label="Modalidad de carga del contrato"
+          style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+              e.preventDefault();
+              setActiveTab((prev) => (prev === "ocr" ? "pdf" : "ocr"));
+            }
+          }}
+        >
           <button
+            id="tab-ocr"
+            role="tab"
             type="button"
+            aria-selected={activeTab === "ocr"}
+            aria-controls="panel-ocr"
+            tabIndex={activeTab === "ocr" ? 0 : -1}
             className={activeTab === "ocr" ? "status-pill" : "button-secondary"}
             style={{
               cursor: "pointer",
@@ -324,7 +339,12 @@ export function ContractWorkbench() {
             Digitalización con PaddleOCR (REQ-DYXS-002)
           </button>
           <button
+            id="tab-pdf"
+            role="tab"
             type="button"
+            aria-selected={activeTab === "pdf"}
+            aria-controls="panel-pdf"
+            tabIndex={activeTab === "pdf" ? 0 : -1}
             className={activeTab === "pdf" ? "status-pill" : "button-secondary"}
             style={{
               cursor: "pointer",
@@ -354,6 +374,7 @@ export function ContractWorkbench() {
             </p>
           </div>
         ) : activeTab === "ocr" ? (
+          <div role="tabpanel" id="panel-ocr" aria-labelledby="tab-ocr" tabIndex={0}>
             <form className="form-row" onSubmit={handleUploadScan}>
               <label>
                 Imagen o escaneo (PDF, PNG, JPG)
@@ -376,7 +397,9 @@ export function ContractWorkbench() {
                 {busy ? "Procesando PaddleOCR..." : "Digitalizar con PaddleOCR"}
               </button>
             </form>
-          ) : (
+          </div>
+        ) : (
+          <div role="tabpanel" id="panel-pdf" aria-labelledby="tab-pdf" tabIndex={0}>
             <form className="form-row" onSubmit={handleUploadPdf}>
               <label>
                 PDF firmado de prueba
@@ -397,7 +420,8 @@ export function ContractWorkbench() {
               </label>
               <button disabled={busy || !file} type="submit">Crear versión</button>
             </form>
-          )}
+          </div>
+        )}
         </div>
 
       {ocrProgressStep > 0 && (
