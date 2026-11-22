@@ -112,8 +112,47 @@ export default function (data) {
   const signAccepted = check(signed, {
     'signature accepted without waiting for Stellar': (result) => result.status === 202,
   });
+  if (!signAccepted) {
+    contractWorkflowErrors.add(1);
+    contractWorkflowDuration.add(Date.now() - startedAt);
+    return;
+  }
+
+  const verified = http.get(
+    `${baseUrl}/api/v1/contracts/${contractId}/versions/${documentVersionId}/verify`,
+    { headers, tags: { endpoint: 'verify_stored_pdf' } },
+  );
+  const contentMatches = check(verified, {
+    'stored PDF hash verified while Stellar is pending': (result) =>
+      result.status === 200 && result.json('contentMatches') === true,
+  });
+  if (!contentMatches) {
+    contractWorkflowErrors.add(1);
+    contractWorkflowDuration.add(Date.now() - startedAt);
+    return;
+  }
+
+  const downloadLink = http.get(
+    `${baseUrl}/api/v1/documents/${documentVersionId}/download`,
+    { headers, tags: { endpoint: 'authorized_download_link' } },
+  );
+  const downloadUrl = downloadLink.status === 200 ? downloadLink.json('downloadUrl') : null;
+  const linkIssued = check(downloadLink, {
+    'authorized temporary download link issued': (result) => result.status === 200 && Boolean(downloadUrl),
+  });
+  if (!linkIssued) {
+    contractWorkflowErrors.add(1);
+    contractWorkflowDuration.add(Date.now() - startedAt);
+    return;
+  }
+
+  const downloaded = http.get(downloadUrl, { tags: { endpoint: 'download_pdf' } });
+  const pdfDownloaded = check(downloaded, {
+    'private PDF downloaded from presigned URL': (result) =>
+      result.status === 200 && result.body.startsWith('%PDF-'),
+  });
   contractWorkflowDuration.add(Date.now() - startedAt);
-  if (signAccepted) {
+  if (pdfDownloaded) {
     contractsCompleted.add(1);
   } else {
     contractWorkflowErrors.add(1);
@@ -138,7 +177,7 @@ export function handleSummary(data) {
     httpRequestErrorRate: Number(requestErrorRate.toFixed(5)),
     targetBandContractsPerSecond: '7-10',
     targetMinimumMet: throughput >= 7,
-    scope: 'Create contract, upload synthetic PDF to SeaweedFS, review SHA-256, record signer and enqueue PostgreSQL outbox; real Stellar confirmation is measured separately by a bounded Testnet smoke workflow.',
+    scope: 'Create contract, upload synthetic PDF to SeaweedFS, review SHA-256, record signer and enqueue PostgreSQL outbox, verify stored bytes, authorize a temporary URL and download the private PDF; real Stellar confirmation is measured separately by a bounded Testnet smoke workflow.',
   };
 
   return {
