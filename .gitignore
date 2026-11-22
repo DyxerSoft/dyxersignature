@@ -18,6 +18,12 @@ backend/.data/
 !.env.example
 appsettings.*.local.json
 
+# Python requirement-loop runtime
+__pycache__/
+*.py[cod]
+.requirement-handoff.lock
+docs/implementacion/requerimientos/*/.loop-state.lock
+
 # IDE
 .vscode/
 .idea/

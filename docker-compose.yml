@@ -1,10 +1,10 @@
 services:
   postgres:
-    image: postgres:17
+    image: postgres:17.6
     environment:
       POSTGRES_DB: dyxersignature
       POSTGRES_USER: dyxersignature
-      POSTGRES_PASSWORD: dyxersignature_dev
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
     ports:
       - "5432:5432"
     volumes:
@@ -15,5 +15,78 @@ services:
       timeout: 5s
       retries: 10
 
+  seaweedfs:
+    image: chrislusf/seaweedfs:latest
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        printf '{"identities":[{"name":"signature-admin","credentials":[{"accessKey":"%s","secretKey":"%s"}],"actions":["Admin"]},{"name":"signature-api","credentials":[{"accessKey":"%s","secretKey":"%s"}],"actions":["Read","Write","List"]}]}' "$$SEAWEEDFS_ADMIN_ACCESS_KEY" "$$SEAWEEDFS_ADMIN_SECRET_KEY" "$$SEAWEEDFS_ACCESS_KEY" "$$SEAWEEDFS_SECRET_KEY" > /tmp/s3.json
+        exec weed server -dir=/data -s3 -s3.config=/tmp/s3.json
+    environment:
+      SEAWEEDFS_ADMIN_ACCESS_KEY: ${S3_ADMIN_ACCESS_KEY:?Set S3_ADMIN_ACCESS_KEY in .env}
+      SEAWEEDFS_ADMIN_SECRET_KEY: ${S3_ADMIN_SECRET_KEY:?Set S3_ADMIN_SECRET_KEY in .env}
+      SEAWEEDFS_ACCESS_KEY: ${S3_ACCESS_KEY:?Set S3_ACCESS_KEY in .env}
+      SEAWEEDFS_SECRET_KEY: ${S3_SECRET_KEY:?Set S3_SECRET_KEY in .env}
+    ports:
+      - "8333:8333"
+      - "9333:9333"
+    volumes:
+      - dyxersignature_seaweedfs:/data
+
+  s3-init:
+    image: amazon/aws-cli:2
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        until aws s3api list-buckets --endpoint-url http://seaweedfs:8333 >/dev/null 2>&1; do sleep 2; done
+        aws s3api head-bucket --bucket dyxersignature --endpoint-url http://seaweedfs:8333 >/dev/null 2>&1 || aws s3api create-bucket --bucket dyxersignature --endpoint-url http://seaweedfs:8333
+    environment:
+      AWS_ACCESS_KEY_ID: ${S3_ADMIN_ACCESS_KEY:?Set S3_ADMIN_ACCESS_KEY in .env}
+      AWS_SECRET_ACCESS_KEY: ${S3_ADMIN_SECRET_KEY:?Set S3_ADMIN_SECRET_KEY in .env}
+      AWS_DEFAULT_REGION: us-east-1
+    depends_on:
+      - seaweedfs
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: "8080"
+      ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=dyxersignature;Username=dyxersignature;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}"
+      Authentication__JwtSigningKey: ${AUTH_JWT_SIGNING_KEY:?Set AUTH_JWT_SIGNING_KEY in .env}
+      Authentication__Issuer: DyxerSignature
+      Authentication__Audience: DyxerSignature.Client
+      Storage__ServiceUrl: http://seaweedfs:8333
+      Storage__PublicServiceUrl: ${S3_PUBLIC_URL:-http://localhost:8333}
+      Storage__Region: us-east-1
+      Storage__BucketName: dyxersignature
+      Storage__AccessKey: ${S3_ACCESS_KEY:?Set S3_ACCESS_KEY in .env}
+      Storage__SecretKey: ${S3_SECRET_KEY:?Set S3_SECRET_KEY in .env}
+      Storage__PresignedUrlExpirationMinutes: "5"
+      Blockchain__Mode: StellarTestnet
+      Stellar__Network: Testnet
+      Stellar__HorizonUrl: https://horizon-testnet.stellar.org
+      Stellar__PublicKey: ${STELLAR_PUBLIC_KEY:-}
+      Stellar__SecretSeed: ${STELLAR_SECRET_SEED:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      s3-init:
+        condition: service_completed_successfully
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    depends_on:
+      - api
+    ports:
+      - "3000:80"
+
 volumes:
   dyxersignature_postgres:
+  dyxersignature_seaweedfs:

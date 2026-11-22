@@ -1,0 +1,23 @@
+requirement: MVP-001
+criteria:
+  - id: MVP-001-01
+    statement: Compose levanta frontend, API, PostgreSQL y almacenamiento S3 privado con volúmenes persistentes.
+    evidence: Compose config, health endpoint and startup logs.
+  - id: MVP-001-02
+    statement: EF Core migrations create the schema; audit and outbox records persist.
+    evidence: Migration history and database checks.
+  - id: MVP-001-03
+    statement: Contract/document/signature/dashboard APIs require bearer authentication and publish OpenAPI.
+    evidence: HTTP requests and Swagger document.
+  - id: MVP-001-04
+    statement: Signed PDF versions are immutable, hashed and downloadable only after authorization.
+    evidence: Version history, hash comparison and temporary S3 URL.
+  - id: MVP-001-05
+    statement: Outbox writes and verifies SHA-256 document data on Stellar Testnet and retains the transaction hash.
+    evidence: Successful Testnet transaction and explorer/Horizon verification.
+  - id: MVP-001-06
+    statement: The frontend provides the complete create/correct/review/sign/store/anchor/verify/download flow and real dashboard metrics.
+    evidence: Browser demo and API-backed metrics.
+  - id: MVP-001-07
+    statement: A reproducible load run covers 100 users and reports throughput, p95, errors and observed Stellar capacity.
+    evidence: Machine-readable load output and run metadata.

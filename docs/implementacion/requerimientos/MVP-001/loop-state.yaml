@@ -1,0 +1,48 @@
+requirement: MVP-001
+state: PENDING
+iteration: 0
+next_agent: analysis_agent
+cycles:
+  analysis: 0
+  development: 0
+  security: 0
+  testing: 0
+  validation: 0
+limits:
+  analysis_cycles: 3
+  development_cycles: 5
+  security_cycles: 3
+  test_cycles: 5
+  total_iterations: 12
+security:
+  required: true
+  gate: pending
+schema_version: 1
+generation: 1
+rubric_digest: 212da89571c1831df81522a5e86f8c7dac7185a774f40c4e35f56933a83ead76
+history:
+- sequence: 1
+  previous: null
+  time: '2026-11-22T13:21:07.422676+00:00'
+  event: initialized
+  legacy_state: PENDING
+  hash: eb807ab20cdd4df75a1878e256d8586274bcf633f3984dafdbef6bdedc865089
+legacy_history: []
+legacy_state: PENDING
+approvals: {}
+deliveries: {}
+checkpoint: null
+dispatch: null
+evaluation_pending: null
+events: {}
+sessions: {}
+used_sessions: []
+sources:
+  analysis_agent:
+    specs/features/MVP-001.md: ccc91b4706f481cfe421f6718c62130e9858d2060893bf6ff7c61c6ebc400eb5
+security_initial:
+  required: true
+  gate: pending
+bounded_audit: 0
+bounded_conflicts: 0
+integrity: 26e3c52483d2223393a4b665652b64ac0e7ff41856ca0924c28116123e0b872d

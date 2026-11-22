@@ -4,17 +4,19 @@ public sealed class OutboxMessage
 {
     private OutboxMessage() { }
 
-    public OutboxMessage(string type, string payloadJson)
+    public OutboxMessage(string type, string payloadJson, string? idempotencyKey = null)
     {
         Id = Guid.NewGuid();
         Type = type;
         PayloadJson = payloadJson;
+        IdempotencyKey = idempotencyKey ?? Id.ToString("N");
         CreatedAtUtc = DateTimeOffset.UtcNow;
         NextAttemptAtUtc = CreatedAtUtc;
     }
 
     public Guid Id { get; private set; }
     public string Type { get; private set; } = null!;
+    public string IdempotencyKey { get; private set; } = null!;
     public string PayloadJson { get; private set; } = null!;
     public int AttemptCount { get; private set; }
     public DateTimeOffset CreatedAtUtc { get; private set; }

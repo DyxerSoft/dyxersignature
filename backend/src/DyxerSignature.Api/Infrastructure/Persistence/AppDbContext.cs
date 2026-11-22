@@ -3,6 +3,7 @@ using DyxerSignature.Api.Modules.Audit.Domain;
 using DyxerSignature.Api.Modules.Blockchain.Domain;
 using DyxerSignature.Api.Modules.Contracts.Domain;
 using DyxerSignature.Api.Modules.Evidence.Domain;
+using DyxerSignature.Api.Modules.Signatures.Domain;
 using Microsoft.EntityFrameworkCore;
 
 namespace DyxerSignature.Api.Infrastructure.Persistence;
@@ -16,6 +17,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<EvidenceManifest> EvidenceManifests => Set<EvidenceManifest>();
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+    public DbSet<SignatureEvent> SignatureEvents => Set<SignatureEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -24,8 +26,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             entity.ToTable("contracts");
             entity.HasKey(x => x.Id);
             entity.Property(x => x.BusinessReference).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.Title).HasMaxLength(200).IsRequired();
             entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(32);
             entity.HasIndex(x => x.BusinessReference).IsUnique();
+            entity.HasIndex(x => x.DeletedAtUtc);
         });
 
         modelBuilder.Entity<ContractDocumentVersion>(entity =>
@@ -81,9 +85,24 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             entity.ToTable("outbox_messages");
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Type).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.IdempotencyKey).HasMaxLength(120).IsRequired();
             entity.Property(x => x.PayloadJson).HasColumnType("jsonb").IsRequired();
             entity.Property(x => x.LastError).HasMaxLength(2000);
             entity.HasIndex(x => new { x.CompletedAtUtc, x.NextAttemptAtUtc });
+            entity.HasIndex(x => x.IdempotencyKey).IsUnique();
+        });
+
+        modelBuilder.Entity<SignatureEvent>(entity =>
+        {
+            entity.ToTable("signature_events");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.SignerName).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.SignerEmail).HasMaxLength(320);
+            entity.Property(x => x.IpAddress).HasMaxLength(64);
+            entity.Property(x => x.UserAgent).HasMaxLength(500);
+            entity.Property(x => x.DocumentHash).HasMaxLength(64).IsRequired();
+            entity.HasIndex(x => new { x.ContractId, x.SignedAtUtc });
+            entity.HasIndex(x => x.DocumentVersionId);
         });
     }
 }

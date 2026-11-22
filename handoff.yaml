@@ -1,0 +1,14 @@
+handoff:
+  status: ready
+  from_skill: requirement-loop-orchestrator
+  feature: MVP-001
+  feature_status: pending
+  decision: PENDING
+  next_skill: requirement-loop-orchestrator
+  next_agent: analysis_agent
+  state_file: docs/implementacion/requerimientos/MVP-001/loop-state.yaml
+  blocking_questions: []
+  generation: 1
+  iteration: 0
+  dispatch_id: null
+  checkpoint_cause: null

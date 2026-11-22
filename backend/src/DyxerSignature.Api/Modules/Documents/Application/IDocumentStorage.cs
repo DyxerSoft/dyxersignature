@@ -11,4 +11,8 @@ public interface IDocumentStorage
     Task<Stream> OpenReadAsync(string storageKey, CancellationToken cancellationToken);
 
     Task DeleteAsync(string storageKey, CancellationToken cancellationToken);
+
+    Task<string> GetPresignedReadUrlAsync(
+        string storageKey,
+        CancellationToken cancellationToken);
 }
