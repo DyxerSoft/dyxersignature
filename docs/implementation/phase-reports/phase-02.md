@@ -26,18 +26,19 @@ La revisión y la firma son pasos explícitos. La aplicación registra quién co
 - `python scripts/validar_requirement_loop.py --requirement MVP-001`: correcto; el despacho de análisis permanece `ANALYZING`.
 - `python scripts/probar_requirement_loop.py`: 20 correctas, 2 omitidas por límites de symlink/chmod en Windows.
 - JSON de `appsettings.json` y YAML de Compose: parsean correctamente.
-- CI backend run `45031383678`: Restore correcto; Build falló por una variable contextual reservada (`group`) en la consulta de métricas del dashboard. Tests y Docker quedaron omitidos por el fallo de Build. Se corrigió en el siguiente commit de esta fase; la reejecución CI queda pendiente.
+- CI backend runs `45031383678` y `45032146660`: el primero falló al compilar por una variable contextual reservada (`group`); el segundo compiló y reveló incompatibilidad entre xUnit v3/Microsoft Testing Platform y el comando `dotnet test` usado por CI.
 - CI frontend run `45028594225`: correcto en la fase 1; fase 2 no cambió código frontend.
-- .NET y Docker locales no están instalados. `dotnet test`, `docker compose config` y runtime local no ejecutables; la reejecución de CI debe cerrar Build, pruebas .NET e imagen Docker.
+- El arnés cambió a xUnit v2 y se corrigió la consulta del dashboard. Backend integrado, pruebas .NET e imagen Docker pasaron en CI `45034897263` (Restore, Build, Tests y Docker image build).
+- .NET y Docker locales no están instalados. `dotnet test`, `docker compose config` y runtime local no son ejecutables aquí; Compose y descarga requieren validación runtime posterior.
 
 ## Bloqueos y límites
 
 - La API representa la firma por un evento verificable asociado a un PDF ya firmado externamente; no implementa certificado digital ni un proveedor de firma electrónica.
 - Compose, SeaweedFS, descarga y persistencia requieren validación runtime; no declarar aceptados esos gates hasta observarlos.
-- El adaptador Stellar, recuperación de transaction hash, métricas de capacidad, carga de 100 usuarios y transacción Testnet pertenecen a fases posteriores.
+- El adaptador Stellar y una transacción Testnet verificada se cerraron en fase 3. Medición de capacidad, carga de 100 usuarios y el flujo PDF completo permanecen pendientes para las fases 4 y 5.
 - La reserva del harness para `analysis_agent` tiene un resultado y artefacto, pero no se materializó una asociación de sesión: la herramienta de delegación disponible expone un nombre de tarea y no el `SESSION_ID` requerido por `bind`. El estado conserva `ANALYZING`; no se inventó un recibo ni se calificó ninguna fase.
 
 ## Siguiente fase
 
-Integrar Stellar Testnet real detrás del Outbox, con efecto idempotente por hash y recuperación del transaction hash tras un reintento; después conectar las nuevas rutas al mockup existente.
+Consultar `phase-03.md` para la integración real de Stellar y continuar con el frontend existente.
 
