@@ -18,7 +18,7 @@ The API does not wait for Stellar. Check `GET /api/v1/contracts/{id}` for the an
 
 ## Testnet verification
 
-The backend performs a server-side lookup by the persisted Stellar transaction hash and confirms that the successful transaction contains the expected `dyxersignature.hash` Manage Data operation. A transaction hash alone is not shown as a verified anchor. The adapter-level transaction is proven by the smoke workflow; full Compose evidence for a real uploaded document remains pending until the containers are run together.
+The backend performs a server-side lookup by the persisted Stellar transaction hash and confirms that the successful transaction contains the expected `dyxersignature.hash` Manage Data operation. A transaction hash alone is not shown as a verified anchor. The adapter smoke is validated, and the full Compose workflow was also executed with PostgreSQL, SeaweedFS, the API and the Outbox worker. GitHub Actions [run 45045085597](https://github.com/DyxerSoft/dyxersignature/actions/runs/45045085597) uploaded, signed, corrected, anchored and verified two real Stellar Testnet transactions, and authorized a PDF download (HTTP 200). This was a CI environment, not a live production deployment.
 
 To perform an isolated adapter smoke test without committing or configuring any seed, run `dotnet run --project backend/tools/StellarTestnetSmoke/StellarTestnetSmoke.csproj`. It generates a temporary keypair in memory, funds the new account through Testnet Friendbot, anchors a random SHA-256 value, and verifies the resulting transaction. The GitHub workflow runs this smoke test only for a push whose commit message contains `[stellar-smoke]` or a manual workflow dispatch. The generated seed is never printed, persisted, or sent to Mainnet.
 
