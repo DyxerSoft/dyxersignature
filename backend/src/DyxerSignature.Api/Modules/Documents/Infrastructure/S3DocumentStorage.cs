@@ -52,7 +52,9 @@ public sealed class S3DocumentStorage : IDocumentStorage, IDisposable
             BucketName = _options.BucketName,
             Key = key,
             InputStream = content,
-            ContentType = "application/pdf"
+            ContentType = "application/pdf",
+            ContentDisposition = "attachment; filename=dyxersignature-document.pdf",
+            CacheControl = "no-store"
         }, cancellationToken);
 
         return key;
@@ -83,12 +85,6 @@ public sealed class S3DocumentStorage : IDocumentStorage, IDisposable
             BucketName = _options.BucketName,
             Key = storageKey,
             Verb = HttpVerb.GET,
-            ResponseHeaderOverrides = new ResponseHeaderOverrides
-            {
-                ContentType = "application/pdf",
-                ContentDisposition = "attachment; filename=dyxersignature-document.pdf",
-                CacheControl = "no-store"
-            },
             Expires = DateTime.UtcNow.AddMinutes(
                 Math.Clamp(_options.PresignedUrlExpirationMinutes, 1, 15))
         });
