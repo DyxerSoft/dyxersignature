@@ -170,10 +170,10 @@ La medición de throughput del flujo de negocio incluye creación, carga, revisi
 
 ## Recursos técnicos
 
-- [Guía de demostración del MVP](docs/implementation/demo-guide.md) *(rama Stellar)*
-- [Plan por fases](docs/implementation/phase-plan.md) *(rama Stellar)*
-- [Prueba de carga](docs/implementation/load-test.md) *(rama Stellar)*
-- [Integración Stellar y verificación](backend/blockchain/README.md) *(rama Stellar)*
+- [Guía de demostración del MVP](https://github.com/DyxerSoft/dyxersignature/blob/feat/stellar-hackathon-mvp/docs/implementation/demo-guide.md) *(rama Stellar)*
+- [Plan por fases](https://github.com/DyxerSoft/dyxersignature/blob/feat/stellar-hackathon-mvp/docs/implementation/phase-plan.md) *(rama Stellar)*
+- [Prueba de carga](https://github.com/DyxerSoft/dyxersignature/blob/feat/stellar-hackathon-mvp/docs/implementation/load-test.md) *(rama Stellar)*
+- [Integración Stellar y verificación](https://github.com/DyxerSoft/dyxersignature/blob/feat/stellar-hackathon-mvp/backend/blockchain/README.md) *(rama Stellar)*
 - [Repositorio DyxerSignature](https://github.com/DyxerSoft/dyxersignature)
 
 ---
