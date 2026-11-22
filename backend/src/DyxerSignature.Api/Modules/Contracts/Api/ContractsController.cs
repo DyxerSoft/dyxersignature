@@ -95,6 +95,31 @@ public sealed class ContractsController(
 
             await using var hashStream = await documentStorage.OpenReadAsync(storageKey, cancellationToken);
             var documentHash = await documentIntegrity.ComputeSha256Async(hashStream, cancellationToken);
+
+            var existingAnchor = await db.BlockchainAnchors
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.DocumentHash == documentHash, cancellationToken);
+
+            if (existingAnchor != null)
+            {
+                await documentStorage.DeleteAsync(storageKey, cancellationToken);
+
+                var existingVersion = await db.ContractDocumentVersions
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(x => x.Id == existingAnchor.DocumentVersionId, cancellationToken);
+
+                var existingContract = existingVersion != null
+                    ? await db.Contracts.AsNoTracking().FirstOrDefaultAsync(x => x.Id == existingVersion.ContractId, cancellationToken)
+                    : null;
+
+                var contractRef = existingContract != null ? existingContract.BusinessReference : existingAnchor.DocumentVersionId.ToString();
+
+                return Problem(
+                    detail: $"El documento ya fue anclado previamente en blockchain para el contrato '{contractRef}' (Hash SHA-256: {documentHash[..12]}...). Por integridad e inmutabilidad criptográfica, el mismo archivo no puede ser registrado en contratos distintos.",
+                    statusCode: StatusCodes.Status409Conflict,
+                    title: "Documento duplicado");
+            }
+
             var signedAtUtc = DateTimeOffset.UtcNow;
 
             var version = new ContractDocumentVersion(
@@ -221,6 +246,22 @@ public sealed class ContractsController(
                 };
             })
         });
+    }
+
+    [HttpGet("{id:guid}/versions/{versionId:guid}/file")]
+    public async Task<IActionResult> GetVersionFile(
+        Guid id,
+        Guid versionId,
+        CancellationToken cancellationToken)
+    {
+        var version = await db.ContractDocumentVersions.AsNoTracking()
+            .SingleOrDefaultAsync(x => x.Id == versionId && x.ContractId == id, cancellationToken);
+
+        if (version is null || string.IsNullOrWhiteSpace(version.StorageKey))
+            return NotFound();
+
+        var stream = await documentStorage.OpenReadAsync(version.StorageKey, cancellationToken);
+        return File(stream, "application/pdf");
     }
 }
 
