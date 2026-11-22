@@ -61,7 +61,8 @@ public sealed class StellarBlockchainGateway : IBlockchainGateway, IDisposable
 
         var transaction = new TransactionBuilder(account)
             .AddOperation(new ManageDataOperation(DataKey, documentHash.ToLowerInvariant()))
-            .AddTimeBounds(new TimeBounds(TimeSpan.FromMinutes(2)))
+            // Keep the lower bound unset: wall-clock skew must not make a valid transaction tx_too_early.
+            .AddTimeBounds(new TimeBounds(0L, DateTimeOffset.UtcNow.AddMinutes(5).ToUnixTimeSeconds()))
             .Build();
         transaction.Sign(source, _network);
 
@@ -111,7 +112,7 @@ public sealed class StellarBlockchainGateway : IBlockchainGateway, IDisposable
             if (recovered is not null)
                 return recovered;
 
-            var resultCodes = response.SubmitTransactionResponseExtras?.ExtrasResultCodes;
+            var resultCodes = response?.SubmitTransactionResponseExtras?.ExtrasResultCodes;
             var operationCodes = resultCodes?.OperationsResultCodes is { Count: > 0 } codes
                 ? string.Join(",", codes)
                 : "none";
