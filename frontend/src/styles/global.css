@@ -79,6 +79,25 @@ input {
   padding: 0.65rem 0.75rem;
 }
 
+:focus-visible {
+  outline: 3px solid var(--color-focus-ring, #005fb8);
+  outline-offset: 2px;
+}
+
+button:focus-visible,
+.button-secondary:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible {
+  outline: 3px solid var(--color-focus-ring, #005fb8);
+  outline-offset: 2px;
+}
+
+input:focus-visible {
+  border-color: var(--color-primary);
+}
+
 code {
   overflow-wrap: anywhere;
   font-size: 0.82rem;
