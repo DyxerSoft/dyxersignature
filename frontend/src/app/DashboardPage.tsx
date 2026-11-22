@@ -178,6 +178,12 @@ function eventName(event: string) {
     "DOCUMENT_VERSION_SIGNED": "Firma registrada",
     "BLOCKCHAIN_CONFIRMED_AND_VERSION_ACTIVATED": "Documento verificado en Stellar",
     "BLOCKCHAIN_CONFIRMED_HISTORICAL_VERSION": "Versión histórica verificada",
+    "CONTRACT_TITLE_UPDATED": "Información del contrato actualizada",
+    "CONTRACT_SOFT_DELETED": "Contrato archivado",
+    "DOCUMENT_VIEWED": "Documento consultado",
+    "DOCUMENT_DOWNLOADED": "Documento descargado",
+    "DOCUMENT_DOWNLOAD_LINK_ISSUED": "Descarga de documento autorizada",
+    "DOCUMENT_VERIFICATION_REQUESTED": "Integridad documental consultada",
     "CONTRACT_DELETED": "Contrato archivado"
   };
   return labels[event] ?? "Actualización contractual";
