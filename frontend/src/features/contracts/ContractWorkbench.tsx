@@ -9,7 +9,7 @@ import {
 import type { ContractDetail, DigitizationJobDetail, DetectedSignature } from "./types";
 
 export function ContractWorkbench() {
-  const [businessReference, setBusinessReference] = useState("GP-TEST-0001");
+  const [businessReference, setBusinessReference] = useState("");
   const [contractId, setContractId] = useState("");
   const [contract, setContract] = useState<ContractDetail | null>(null);
 
@@ -151,7 +151,9 @@ export function ContractWorkbench() {
           <input
             value={businessReference}
             onChange={(event) => setBusinessReference(event.target.value)}
+            onFocus={(event) => event.target.select()}
             placeholder="Ej: GP-CONTRATO-001"
+            autoFocus
             required
           />
         </label>
