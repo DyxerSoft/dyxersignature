@@ -26,7 +26,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
         ?? throw new InvalidOperationException("Connection string 'Postgres' is required.")));
 
 builder.Services.Configure<StorageOptions>(builder.Configuration.GetSection("Storage"));
-builder.Services.Configure<BlockchainOptions>(builder.Configuration.GetSection("Blockchain"));
+builder.Services.Configure<StellarOptions>(builder.Configuration.GetSection("Stellar"));
 
 builder.Services.AddSingleton<IDocumentStorage, S3DocumentStorage>();
 builder.Services.AddSingleton<DocumentIntegrityService>();
@@ -59,12 +59,7 @@ builder.Services
     });
 builder.Services.AddAuthorization();
 
-var blockchainMode = builder.Configuration["Blockchain:Mode"] ?? "Simulated";
-
-if (blockchainMode.Equals("Rpc", StringComparison.OrdinalIgnoreCase))
-    builder.Services.AddSingleton<IBlockchainGateway, NethereumBlockchainGateway>();
-else
-    builder.Services.AddSingleton<IBlockchainGateway, SimulatedBlockchainGateway>();
+builder.Services.AddSingleton<IBlockchainGateway, StellarBlockchainGateway>();
 
 builder.Services.AddHostedService<BlockchainOutboxWorker>();
 
@@ -88,4 +83,3 @@ app.MapControllers();
 app.Run();
 
 public partial class Program;
-

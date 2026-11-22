@@ -2,20 +2,30 @@ namespace DyxerSignature.Api.Modules.Blockchain.Application;
 
 public interface IBlockchainGateway
 {
-    Task<AnchorSubmission> AnchorDocumentAsync(
+    Task<PreparedDocumentAnchor> PrepareDocumentAsync(
         string documentHash,
-        string evidenceHash,
+        CancellationToken cancellationToken);
+
+    Task<AnchorSubmission> SubmitPreparedDocumentAsync(
+        PreparedDocumentAnchor prepared,
         CancellationToken cancellationToken);
 
     Task<AnchorVerification> VerifyDocumentAsync(
         string documentHash,
+        string? transactionHash,
         CancellationToken cancellationToken);
 }
 
+public sealed record PreparedDocumentAnchor(
+    string NetworkName,
+    string DocumentHash,
+    string TransactionHash,
+    string SignedEnvelopeXdr);
+
 public sealed record AnchorSubmission(
-    long ChainId,
-    string? TransactionHash,
-    long? BlockNumber,
+    string NetworkName,
+    string TransactionHash,
+    long? LedgerNumber,
     bool AlreadyAnchored);
 
-public sealed record AnchorVerification(bool Exists);
+public sealed record AnchorVerification(bool Exists, long? LedgerNumber);

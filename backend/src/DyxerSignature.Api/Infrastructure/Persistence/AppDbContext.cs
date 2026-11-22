@@ -55,7 +55,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(32);
             entity.Property(x => x.DocumentHash).HasMaxLength(64).IsRequired();
             entity.Property(x => x.EvidenceHash).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.NetworkName).HasMaxLength(64);
             entity.Property(x => x.TransactionHash).HasMaxLength(80);
+            entity.Property(x => x.PreparedEnvelopeXdr).HasColumnType("text");
             entity.Property(x => x.LastError).HasMaxLength(2000);
             entity.HasIndex(x => x.DocumentVersionId).IsUnique();
             entity.HasIndex(x => x.DocumentHash);
@@ -88,7 +90,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             entity.Property(x => x.IdempotencyKey).HasMaxLength(120).IsRequired();
             entity.Property(x => x.PayloadJson).HasColumnType("jsonb").IsRequired();
             entity.Property(x => x.LastError).HasMaxLength(2000);
-            entity.HasIndex(x => new { x.CompletedAtUtc, x.NextAttemptAtUtc });
+            entity.Property(x => x.ClaimToken);
+            entity.HasIndex(x => new { x.CompletedAtUtc, x.NextAttemptAtUtc, x.ClaimedUntilUtc });
             entity.HasIndex(x => x.IdempotencyKey).IsUnique();
         });
 
@@ -106,4 +109,3 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         });
     }
 }
-

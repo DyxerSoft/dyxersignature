@@ -84,11 +84,12 @@ public sealed class DocumentsController(
         var contentMatches = CryptographicOperations.FixedTimeEquals(
             Convert.FromHexString(storedHash),
             Convert.FromHexString(version.DocumentHash));
-        var onChain = await blockchainGateway.VerifyDocumentAsync(
-            version.DocumentHash,
-            cancellationToken);
         var anchor = await db.BlockchainAnchors.AsNoTracking()
             .SingleOrDefaultAsync(x => x.DocumentVersionId == version.Id, cancellationToken);
+        var onChain = await blockchainGateway.VerifyDocumentAsync(
+            version.DocumentHash,
+            anchor?.TransactionHash,
+            cancellationToken);
 
         db.AuditEvents.Add(new AuditEvent(
             contractId,
@@ -109,9 +110,10 @@ public sealed class DocumentsController(
             contentMatches,
             blockchain = new
             {
-                network = "Stellar Testnet",
+                network = anchor?.NetworkName ?? "Stellar Testnet",
                 status = anchor?.Status.ToString() ?? "Unknown",
                 transactionHash = anchor?.TransactionHash,
+                ledgerNumber = onChain.LedgerNumber ?? anchor?.LedgerNumber,
                 verified = onChain.Exists
             },
             verified = contentMatches && onChain.Exists
@@ -179,4 +181,3 @@ public sealed class DocumentsController(
         });
     }
 }
-

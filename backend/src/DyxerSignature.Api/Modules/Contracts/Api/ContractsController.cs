@@ -147,9 +147,9 @@ public sealed class ContractsController(
                         : new
                         {
                             status = anchor.Status.ToString(),
-                            anchor.ChainId,
+                            anchor.NetworkName,
                             anchor.TransactionHash,
-                            anchor.BlockNumber,
+                            anchor.LedgerNumber,
                             anchor.RetryCount,
                             anchor.LastError,
                             anchor.ConfirmedAtUtc
@@ -479,4 +479,3 @@ internal static class HttpContextExtensions
         return new Guid(bytes[..16]);
     }
 }
-
