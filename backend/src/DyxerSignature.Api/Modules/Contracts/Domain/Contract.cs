@@ -43,9 +43,17 @@ public sealed class Contract
         UpdatedAtUtc = DateTimeOffset.UtcNow;
     }
 
+    public void MarkSignatureInProgress()
+    {
+        if (CurrentVersionId is null)
+            Status = ContractStatus.InSignature;
+        UpdatedAtUtc = DateTimeOffset.UtcNow;
+    }
+
     public void SoftDelete()
     {
         DeletedAtUtc ??= DateTimeOffset.UtcNow;
         UpdatedAtUtc = DateTimeOffset.UtcNow;
     }
 }
+

@@ -28,8 +28,8 @@ public sealed class SignatureEvent
         SignerName = signerName.Trim();
         SignerEmail = string.IsNullOrWhiteSpace(signerEmail) ? null : signerEmail.Trim();
         DocumentHash = documentHash.ToLowerInvariant();
-        IpAddress = ipAddress;
-        UserAgent = userAgent;
+        IpAddress = ipAddress is null ? null : ipAddress[..Math.Min(64, ipAddress.Length)];
+        UserAgent = userAgent is null ? null : userAgent[..Math.Min(500, userAgent.Length)];
         SignedAtUtc = DateTimeOffset.UtcNow;
     }
 
@@ -43,3 +43,4 @@ public sealed class SignatureEvent
     public string? UserAgent { get; private set; }
     public DateTimeOffset SignedAtUtc { get; private set; }
 }
+

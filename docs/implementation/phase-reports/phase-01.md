@@ -6,7 +6,8 @@ Framework multiagente integrado y rama feat/stellar-hackathon-mvp creada desde m
 
 ## Commit
 
-Se registra en el historial de feat/stellar-hackathon-mvp.
+`0cff0542556ab1540686ce63b4c3e314f2dd9174` — `feat(infra): bootstrap MVP runtime and multiagent harness`.
+La rama se creó desde `main` (`f406c1a61dc871471f2cbd29f9d90d39aeb3d6f3`); no se actualizó `main`.
 
 ## Archivos principales
 
@@ -24,7 +25,9 @@ Se registra en el historial de feat/stellar-hackathon-mvp.
 - Validación de estructura del proyecto y de estado MVP-001: correcta.
 - Parseo de sintaxis: 21 archivos YAML y 9 TOML correctos.
 - El YAML de Compose se parsea correctamente; docker compose config y el arranque de contenedores no se pudieron ejecutar sin Docker.
-- La evidencia de CI se añadirá después del primer push.
+- CI frontend: run `45028594225`, correcto.
+- CI backend: run `45028594234`; Restore, Build y el comando de Tests terminaron correctamente, pero todavía no había un proyecto de pruebas .NET y no se descubrieron pruebas. La compilación de Docker falló con `NETSDK1064` porque `AWSSDK.S3 4.0.104.11` no estaba disponible en la etapa `publish --no-restore`. Se corrigió el Dockerfile en fase 2 y se volverá a comprobar.
+- El harness conservó MVP-001 como `PENDING` al inicializarse. La suite de 20 pruebas del framework pasó con 2 omisiones por límites de Windows.
 
 ## Bloqueos
 
@@ -33,3 +36,4 @@ Se registra en el historial de feat/stellar-hackathon-mvp.
 ## Siguiente fase
 
 Completar APIs y modelos de contratos, documentos, firmantes, métricas, auditoría y descarga autorizada.
+

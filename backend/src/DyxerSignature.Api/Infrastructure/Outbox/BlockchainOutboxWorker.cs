@@ -70,7 +70,7 @@ public sealed class BlockchainOutboxWorker(
                 anchor.EvidenceHash,
                 cancellationToken);
 
-            if (!submission.AlreadyAnchored && submission.TransactionHash is not null)
+            if (submission.TransactionHash is not null)
             {
                 anchor.MarkSubmitted(submission.ChainId, submission.TransactionHash);
                 version.MarkBlockchainSubmitted();
@@ -86,10 +86,35 @@ public sealed class BlockchainOutboxWorker(
                     x.Status == DocumentVersionStatus.Active)
                 .SingleOrDefaultAsync(cancellationToken);
 
+            var newerVersionExists = await db.ContractDocumentVersions
+                .AnyAsync(
+                    x => x.ContractId == contract.Id && x.VersionNumber > version.VersionNumber,
+                    cancellationToken);
+
+            if (newerVersionExists)
+            {
+                message.Complete();
+                db.AuditEvents.Add(new AuditEvent(
+                    contract.Id,
+                    version.Id,
+                    "BLOCKCHAIN_CONFIRMED_HISTORICAL_VERSION",
+                    "SYSTEM",
+                    null,
+                    JsonSerializer.Serialize(new
+                    {
+                        anchor.Id,
+                        submission.TransactionHash,
+                        version.VersionNumber,
+                        reason = "A newer immutable version already exists."
+                    }),
+                    Guid.NewGuid()));
+                await db.SaveChangesAsync(cancellationToken);
+                return true;
+            }
+
             if (previousActive is not null)
             {
-                previousActive.Supersede(
-                    payload.CorrectionReason ?? $"Replaced by version {version.VersionNumber}.");
+                previousActive.Supersede();
             }
 
             version.Activate();
@@ -151,3 +176,4 @@ public sealed class BlockchainOutboxWorker(
         }
     }
 }
+

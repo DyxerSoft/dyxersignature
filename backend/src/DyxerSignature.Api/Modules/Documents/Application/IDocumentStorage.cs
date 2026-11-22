@@ -2,7 +2,7 @@ namespace DyxerSignature.Api.Modules.Documents.Application;
 
 public interface IDocumentStorage
 {
-    Task<string> SaveSignedPdfAsync(
+    Task<string> SavePdfAsync(
         Guid contractId,
         int versionNumber,
         Stream content,
@@ -10,9 +10,8 @@ public interface IDocumentStorage
 
     Task<Stream> OpenReadAsync(string storageKey, CancellationToken cancellationToken);
 
-    Task DeleteAsync(string storageKey, CancellationToken cancellationToken);
-
     Task<string> GetPresignedReadUrlAsync(
         string storageKey,
         CancellationToken cancellationToken);
 }
+

@@ -40,7 +40,7 @@ public sealed class S3DocumentStorage : IDocumentStorage, IDisposable
         _publicSigningClient = CreateClient(_options.PublicServiceUrl);
     }
 
-    public async Task<string> SaveSignedPdfAsync(
+    public async Task<string> SavePdfAsync(
         Guid contractId,
         int versionNumber,
         Stream content,
@@ -70,13 +70,6 @@ public sealed class S3DocumentStorage : IDocumentStorage, IDisposable
         }, cancellationToken);
 
         return response.ResponseStream;
-    }
-
-    public Task DeleteAsync(string storageKey, CancellationToken cancellationToken)
-    {
-        // Retention is append-only for auditability. Logical deletion belongs to the database.
-        ValidateStorageKey(storageKey);
-        return Task.CompletedTask;
     }
 
     public Task<string> GetPresignedReadUrlAsync(
@@ -126,3 +119,4 @@ public sealed class S3DocumentStorage : IDocumentStorage, IDisposable
         }
     }
 }
+

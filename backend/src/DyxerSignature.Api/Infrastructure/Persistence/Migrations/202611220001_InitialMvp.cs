@@ -43,7 +43,7 @@ public sealed class InitialMvp : Migration
             CREATE TABLE blockchain_anchors (
                 "Id" uuid PRIMARY KEY,
                 "DocumentVersionId" uuid NOT NULL UNIQUE REFERENCES contract_document_versions ("Id") ON DELETE RESTRICT,
-                "DocumentHash" varchar(64) NOT NULL UNIQUE,
+                "DocumentHash" varchar(64) NOT NULL,
                 "EvidenceHash" varchar(64) NOT NULL,
                 "Status" varchar(32) NOT NULL,
                 "ChainId" bigint NULL,
@@ -123,3 +123,4 @@ public sealed class InitialMvp : Migration
             """);
     }
 }
+

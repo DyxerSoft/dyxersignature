@@ -58,7 +58,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             entity.Property(x => x.TransactionHash).HasMaxLength(80);
             entity.Property(x => x.LastError).HasMaxLength(2000);
             entity.HasIndex(x => x.DocumentVersionId).IsUnique();
-            entity.HasIndex(x => x.DocumentHash).IsUnique();
+            entity.HasIndex(x => x.DocumentHash);
         });
 
         modelBuilder.Entity<EvidenceManifest>(entity =>
@@ -106,3 +106,4 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         });
     }
 }
+

@@ -14,7 +14,7 @@ public sealed class BlockchainAnchor
 
     public BlockchainAnchor(Guid documentVersionId, string documentHash, string evidenceHash)
     {
-        if (documentHash.Length != 64 || evidenceHash.Length != 64)
+        if (!IsSha256(documentHash) || !IsSha256(evidenceHash))
             throw new ArgumentException("Document and evidence hashes must be SHA-256 hexadecimal values.");
 
         Id = Guid.NewGuid();
@@ -69,4 +69,8 @@ public sealed class BlockchainAnchor
         if (Status != BlockchainAnchorStatus.Confirmed)
             Status = BlockchainAnchorStatus.Pending;
     }
+
+    private static bool IsSha256(string? hash)
+        => hash is { Length: 64 } && hash.All(Uri.IsHexDigit);
 }
+
