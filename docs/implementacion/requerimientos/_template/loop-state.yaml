@@ -1,0 +1,21 @@
+requirement: CHANGE_ME
+state: PENDING
+iteration: 0
+next_agent: analysis_agent
+cycles:
+  analysis: 0
+  development: 0
+  security: 0
+  testing: 0
+  validation: 0
+limits:
+  analysis_cycles: 3
+  development_cycles: 5
+  security_cycles: 3
+  test_cycles: 5
+  total_iterations: 12
+security:
+  required: true
+  gate: pending
+history: []
+

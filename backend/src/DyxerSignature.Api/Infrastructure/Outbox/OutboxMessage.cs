@@ -4,35 +4,64 @@ public sealed class OutboxMessage
 {
     private OutboxMessage() { }
 
-    public OutboxMessage(string type, string payloadJson)
+    public OutboxMessage(string type, string payloadJson, string? idempotencyKey = null)
     {
         Id = Guid.NewGuid();
         Type = type;
         PayloadJson = payloadJson;
+        IdempotencyKey = idempotencyKey ?? Id.ToString("N");
         CreatedAtUtc = DateTimeOffset.UtcNow;
         NextAttemptAtUtc = CreatedAtUtc;
     }
 
     public Guid Id { get; private set; }
     public string Type { get; private set; } = null!;
+    public string IdempotencyKey { get; private set; } = null!;
     public string PayloadJson { get; private set; } = null!;
     public int AttemptCount { get; private set; }
     public DateTimeOffset CreatedAtUtc { get; private set; }
     public DateTimeOffset NextAttemptAtUtc { get; private set; }
+    public Guid? ClaimToken { get; private set; }
+    public DateTimeOffset? ClaimedUntilUtc { get; private set; }
     public DateTimeOffset? CompletedAtUtc { get; private set; }
     public string? LastError { get; private set; }
 
-    public void Complete()
+    public void Claim(Guid token, DateTimeOffset claimedUntilUtc)
     {
-        CompletedAtUtc = DateTimeOffset.UtcNow;
-        LastError = null;
+        if (CompletedAtUtc is not null)
+            throw new InvalidOperationException("A completed outbox message cannot be claimed.");
+
+        ClaimToken = token;
+        ClaimedUntilUtc = claimedUntilUtc;
     }
 
-    public void ScheduleRetry(string error)
+    public void Complete(Guid token)
     {
+        EnsureClaim(token);
+        CompletedAtUtc = DateTimeOffset.UtcNow;
+        LastError = null;
+        ClearClaim();
+    }
+
+    public void ScheduleRetry(Guid token, string error)
+    {
+        EnsureClaim(token);
         AttemptCount++;
         LastError = error.Length > 2000 ? error[..2000] : error;
         var seconds = Math.Min(60, Math.Pow(2, Math.Min(AttemptCount, 6)));
         NextAttemptAtUtc = DateTimeOffset.UtcNow.AddSeconds(seconds);
+        ClearClaim();
+    }
+
+    private void EnsureClaim(Guid token)
+    {
+        if (ClaimToken != token)
+            throw new InvalidOperationException("Outbox lease is no longer owned by this worker.");
+    }
+
+    private void ClearClaim()
+    {
+        ClaimToken = null;
+        ClaimedUntilUtc = null;
     }
 }

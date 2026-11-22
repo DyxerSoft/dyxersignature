@@ -1,0 +1,13 @@
+{
+  "event_id": "d7e9bf560ab24fd2b5fc527fdad8545c",
+  "dispatch_id": "a85c758fc6814d86a23d30b304851c7f",
+  "outcome": "ANALYSIS_READY",
+  "artifacts": [
+    {
+      "path": "docs/implementacion/requerimientos/MVP-001/evidence/analysis-attempt-01.md",
+      "locator": "L1-L61",
+      "sha256": "99b155a2ba3b72dc11aa84485334d07e30e36bab699eb3d01012fe9ea248e76f"
+    }
+  ]
+}
+

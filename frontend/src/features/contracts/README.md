@@ -1,5 +1,6 @@
 # Contracts feature
 
-Responsable de listado, detalle, versión vigente, histórico y solicitudes de corrección.
+Conecta el mockup existente con el dashboard y las APIs autenticadas de contratos. Incluye alta, carga de versión, motivo de corrección, revisión por SHA-256, firma declarativa, histórico, comparación, firmantes, verificación y descarga autorizada.
 
-No debe contener llamadas HTTP directas; consumir `services/api`.
+Las solicitudes HTTP se mantienen en `api.ts` y usan el cliente común `services/api/client.ts`. Las descargas reciben una URL prefirmada de corta duración después de que la API valida JWT y registra auditoría.
+

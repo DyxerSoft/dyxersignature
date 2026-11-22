@@ -14,140 +14,267 @@ public sealed class BlockchainOutboxWorker(
     ILogger<BlockchainOutboxWorker> logger) : BackgroundService
 {
     public const string AnchorDocumentType = "blockchain.anchor-document.v1";
+    private static readonly TimeSpan ClaimDuration = TimeSpan.FromMinutes(5);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            var processed = await ProcessNextAsync(stoppingToken);
-
-            if (!processed)
-                await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken);
+            try
+            {
+                var processed = await ProcessNextAsync(stoppingToken);
+                if (!processed)
+                    await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
+            catch (Exception exception)
+            {
+                logger.LogError(exception, "Stellar outbox polling failed; retrying shortly.");
+                await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
+            }
         }
     }
 
     private async Task<bool> ProcessNextAsync(CancellationToken cancellationToken)
     {
-        using var scope = scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var now = DateTimeOffset.UtcNow;
-
-        var message = await db.OutboxMessages
-            .Where(x =>
-                x.CompletedAtUtc == null &&
-                x.NextAttemptAtUtc <= now &&
-                x.Type == AnchorDocumentType)
-            .OrderBy(x => x.CreatedAtUtc)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        if (message is null)
+        var claim = await ClaimNextAsync(cancellationToken);
+        if (claim is null)
             return false;
 
         try
         {
-            var payload = JsonSerializer.Deserialize<AnchorDocumentOutboxPayload>(message.PayloadJson)
-                ?? throw new InvalidOperationException("Invalid outbox payload.");
+            await ProcessClaimedAsync(claim.Value.Id, claim.Value.Token, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // The lease expires if shutdown interrupts external I/O. The same persisted envelope is retried.
+            throw;
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Stellar outbox message {MessageId} failed.", claim.Value.Id);
+            await PersistRetryAsync(claim.Value.Id, claim.Value.Token, exception, cancellationToken);
+        }
 
-            var anchor = await db.BlockchainAnchors
-                .SingleAsync(x => x.Id == payload.AnchorId, cancellationToken);
-            var version = await db.ContractDocumentVersions
-                .SingleAsync(x => x.Id == payload.DocumentVersionId, cancellationToken);
-            var contract = await db.Contracts
-                .SingleAsync(x => x.Id == payload.ContractId, cancellationToken);
+        return true;
+    }
 
-            if (anchor.Status == BlockchainAnchorStatus.Confirmed &&
-                version.Status == DocumentVersionStatus.Active)
-            {
-                message.Complete();
-                await db.SaveChangesAsync(cancellationToken);
-                return true;
-            }
+    private async Task<(Guid Id, Guid Token)?> ClaimNextAsync(CancellationToken cancellationToken)
+    {
+        using var scope = scopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        var now = DateTimeOffset.UtcNow;
+        var dueMessages = await db.OutboxMessages.FromSqlInterpolated($"""
+                SELECT * FROM outbox_messages
+                WHERE "CompletedAtUtc" IS NULL
+                  AND "NextAttemptAtUtc" <= {now}
+                  AND "Type" = {AnchorDocumentType}
+                  AND ("ClaimedUntilUtc" IS NULL OR "ClaimedUntilUtc" <= {now})
+                ORDER BY "CreatedAtUtc"
+                LIMIT 1 FOR UPDATE SKIP LOCKED
+                """)
+            .ToListAsync(cancellationToken);
+        var message = dueMessages.SingleOrDefault();
+        if (message is null)
+            return null;
 
+        var token = Guid.NewGuid();
+        message.Claim(token, now.Add(ClaimDuration));
+        await db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return (message.Id, token);
+    }
+
+    private async Task ProcessClaimedAsync(
+        Guid messageId,
+        Guid claimToken,
+        CancellationToken cancellationToken)
+    {
+        using var scope = scopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var message = await db.OutboxMessages.SingleAsync(x => x.Id == messageId, cancellationToken);
+        EnsureClaim(message, claimToken);
+
+        var payload = JsonSerializer.Deserialize<AnchorDocumentOutboxPayload>(message.PayloadJson)
+            ?? throw new InvalidOperationException("Invalid Stellar outbox payload.");
+        var anchor = await db.BlockchainAnchors.SingleAsync(x => x.Id == payload.AnchorId, cancellationToken);
+        var version = await db.ContractDocumentVersions.SingleAsync(
+            x => x.Id == payload.DocumentVersionId,
+            cancellationToken);
+
+        AnchorSubmission submission;
+        if (anchor.Status == BlockchainAnchorStatus.Confirmed && anchor.TransactionHash is not null)
+        {
+            submission = new AnchorSubmission(
+                anchor.NetworkName ?? "Stellar Testnet",
+                anchor.TransactionHash,
+                anchor.LedgerNumber,
+                true);
+        }
+        else
+        {
             anchor.PrepareRetry();
-
-            var submission = await blockchainGateway.AnchorDocumentAsync(
-                anchor.DocumentHash,
-                anchor.EvidenceHash,
-                cancellationToken);
-
-            if (!submission.AlreadyAnchored && submission.TransactionHash is not null)
+            PreparedDocumentAnchor prepared;
+            if (anchor.TransactionHash is null || anchor.PreparedEnvelopeXdr is null)
             {
-                anchor.MarkSubmitted(submission.ChainId, submission.TransactionHash);
-                version.MarkBlockchainSubmitted();
+                prepared = await blockchainGateway.PrepareDocumentAsync(anchor.DocumentHash, cancellationToken);
+                anchor.MarkPrepared(
+                    prepared.NetworkName,
+                    prepared.TransactionHash,
+                    prepared.SignedEnvelopeXdr);
+                // Persist the signed envelope and deterministic transaction hash before any network submission.
+                await db.SaveChangesAsync(cancellationToken);
+            }
+            else
+            {
+                prepared = new PreparedDocumentAnchor(
+                    anchor.NetworkName ?? "Stellar Testnet",
+                    anchor.DocumentHash,
+                    anchor.TransactionHash,
+                    anchor.PreparedEnvelopeXdr);
             }
 
-            anchor.MarkConfirmed(submission.ChainId, submission.BlockNumber);
+            submission = await blockchainGateway.SubmitPreparedDocumentAsync(prepared, cancellationToken);
+            anchor.MarkSubmitted(submission.NetworkName, submission.TransactionHash);
+            version.MarkBlockchainSubmitted();
+            anchor.MarkConfirmed(
+                submission.NetworkName,
+                submission.TransactionHash,
+                submission.LedgerNumber);
             version.MarkBlockchainConfirmed();
+        }
 
-            var previousActive = await db.ContractDocumentVersions
-                .Where(x =>
-                    x.ContractId == contract.Id &&
-                    x.Id != version.Id &&
-                    x.Status == DocumentVersionStatus.Active)
-                .SingleOrDefaultAsync(cancellationToken);
+        await using var activationTransaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        var contract = await db.Contracts.FromSqlInterpolated($"""
+                SELECT * FROM contracts
+                WHERE "Id" = {payload.ContractId}
+                FOR UPDATE
+                """)
+            .SingleOrDefaultAsync(cancellationToken);
+        if (contract is null)
+            throw new InvalidOperationException("The contract row for a Stellar outbox message was not found.");
 
-            if (previousActive is not null)
-            {
-                previousActive.Supersede(
-                    payload.CorrectionReason ?? $"Replaced by version {version.VersionNumber}.");
-            }
-
-            version.Activate();
-            contract.ActivateVersion(version.Id);
-
-            db.AuditEvents.Add(new AuditEvent(
+        if (contract.DeletedAtUtc is not null)
+        {
+            db.AuditEvents.Add(NewAudit(
                 contract.Id,
                 version.Id,
-                "BLOCKCHAIN_CONFIRMED_AND_VERSION_ACTIVATED",
-                "SYSTEM",
-                null,
-                JsonSerializer.Serialize(new
-                {
-                    anchor.Id,
-                    submission.ChainId,
-                    submission.TransactionHash,
-                    submission.BlockNumber,
-                    submission.AlreadyAnchored,
-                    version.VersionNumber
-                }),
-                Guid.NewGuid()));
-
-            message.Complete();
-            await db.SaveChangesAsync(cancellationToken);
-
-            logger.LogInformation(
-                "Activated contract {ContractId} version {VersionNumber} after blockchain confirmation.",
-                contract.Id,
-                version.VersionNumber);
-
-            return true;
+                "BLOCKCHAIN_CONFIRMED_FOR_DELETED_CONTRACT",
+                new { anchor.Id, submission.TransactionHash, version.VersionNumber }));
         }
-        catch (Exception ex)
+        else
         {
-            logger.LogError(ex, "Outbox message {MessageId} failed.", message.Id);
-            message.ScheduleRetry(ex.Message);
-
-            try
+            var newerVersionExists = await db.ContractDocumentVersions.AnyAsync(
+                x => x.ContractId == contract.Id && x.VersionNumber > version.VersionNumber,
+                cancellationToken);
+            if (newerVersionExists)
             {
-                var payload = JsonSerializer.Deserialize<AnchorDocumentOutboxPayload>(message.PayloadJson);
-                if (payload is not null)
-                {
-                    var anchor = await db.BlockchainAnchors
-                        .SingleOrDefaultAsync(x => x.Id == payload.AnchorId, cancellationToken);
-                    anchor?.RegisterFailure(ex.Message);
-                }
-
-                await db.SaveChangesAsync(cancellationToken);
+                db.AuditEvents.Add(NewAudit(
+                    contract.Id,
+                    version.Id,
+                    "BLOCKCHAIN_CONFIRMED_HISTORICAL_VERSION",
+                    new
+                    {
+                        anchor.Id,
+                        submission.TransactionHash,
+                        submission.NetworkName,
+                        version.VersionNumber,
+                        reason = "A newer immutable version already exists."
+                    }));
             }
-            catch (Exception persistenceEx)
+            else
             {
-                logger.LogError(
-                    persistenceEx,
-                    "Could not persist retry state for outbox message {MessageId}.",
-                    message.Id);
+                var previousActive = await db.ContractDocumentVersions
+                    .Where(x =>
+                        x.ContractId == contract.Id &&
+                        x.Id != version.Id &&
+                        x.Status == DocumentVersionStatus.Active)
+                    .SingleOrDefaultAsync(cancellationToken);
+
+                previousActive?.Supersede();
+                version.Activate();
+                contract.ActivateVersion(version.Id);
+                db.AuditEvents.Add(NewAudit(
+                    contract.Id,
+                    version.Id,
+                    "BLOCKCHAIN_CONFIRMED_AND_VERSION_ACTIVATED",
+                    new
+                    {
+                        anchor.Id,
+                        submission.NetworkName,
+                        submission.TransactionHash,
+                        submission.LedgerNumber,
+                        submission.AlreadyAnchored,
+                        version.VersionNumber
+                    }));
+            }
+        }
+
+        message.Complete(claimToken);
+        await db.SaveChangesAsync(cancellationToken);
+        await activationTransaction.CommitAsync(cancellationToken);
+
+        logger.LogInformation(
+            "Confirmed Stellar transaction {TransactionHash} for contract {ContractId} version {VersionNumber}.",
+            submission.TransactionHash,
+            contract.Id,
+            version.VersionNumber);
+    }
+
+    private async Task PersistRetryAsync(
+        Guid messageId,
+        Guid claimToken,
+        Exception exception,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var scope = scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var message = await db.OutboxMessages.SingleOrDefaultAsync(
+                x => x.Id == messageId,
+                cancellationToken);
+            if (message is null || message.ClaimToken != claimToken)
+                return;
+
+            var payload = JsonSerializer.Deserialize<AnchorDocumentOutboxPayload>(message.PayloadJson);
+            if (payload is not null)
+            {
+                var anchor = await db.BlockchainAnchors.SingleOrDefaultAsync(
+                    x => x.Id == payload.AnchorId,
+                    cancellationToken);
+                anchor?.RegisterFailure(exception.Message);
             }
 
-            return true;
+            message.ScheduleRetry(claimToken, exception.Message);
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception persistenceException)
+        {
+            logger.LogError(
+                persistenceException,
+                "Could not persist retry state for Stellar outbox message {MessageId}.",
+                messageId);
         }
     }
+
+    private static void EnsureClaim(OutboxMessage message, Guid token)
+    {
+        if (message.ClaimToken != token)
+            throw new InvalidOperationException("Stellar outbox lease is no longer owned by this worker.");
+    }
+
+    private static AuditEvent NewAudit(Guid contractId, Guid versionId, string eventType, object metadata)
+        => new(
+            contractId,
+            versionId,
+            eventType,
+            "SYSTEM",
+            null,
+            JsonSerializer.Serialize(metadata),
+            Guid.NewGuid());
 }

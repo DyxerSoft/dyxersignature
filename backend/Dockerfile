@@ -1,19 +1,17 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
-
-COPY DyxerSignature.slnx ./
-COPY src/DyxerSignature.Api/DyxerSignature.Api.csproj src/DyxerSignature.Api/
-RUN dotnet restore DyxerSignature.slnx
-
-COPY src/DyxerSignature.Api/ src/DyxerSignature.Api/
-RUN dotnet publish src/DyxerSignature.Api/DyxerSignature.Api.csproj -c Release -o /app/publish
+COPY backend/DyxerSignature.slnx backend/
+COPY backend/src/DyxerSignature.Api/DyxerSignature.Api.csproj backend/src/DyxerSignature.Api/
+COPY backend/tests/DyxerSignature.Api.Tests/DyxerSignature.Api.Tests.csproj backend/tests/DyxerSignature.Api.Tests/
+RUN dotnet restore backend/DyxerSignature.slnx
+COPY backend/ backend/
+RUN dotnet publish backend/src/DyxerSignature.Api/DyxerSignature.Api.csproj \
+    --configuration Release --output /app/publish
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
-COPY --from=build /app/publish .
-
-ENV ASPNETCORE_URLS=http://+:8080
-ENV ASPNETCORE_ENVIRONMENT=Development
-
+ENV ASPNETCORE_HTTP_PORTS=8080
 EXPOSE 8080
+COPY --from=build /app/publish .
+USER $APP_UID
 ENTRYPOINT ["dotnet", "DyxerSignature.Api.dll"]

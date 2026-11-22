@@ -1,3 +1,5 @@
 <Solution>
   <Project Path="src/DyxerSignature.Api/DyxerSignature.Api.csproj" />
+  <Project Path="tests/DyxerSignature.Api.Tests/DyxerSignature.Api.Tests.csproj" />
 </Solution>
+

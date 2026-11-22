@@ -1,0 +1,14 @@
+requirement: MVP-001
+invariants:
+  - id: INV-01
+    statement: A definitive document version is immutable and never physically deleted.
+  - id: INV-02
+    statement: Corrections create a new version and preserve the former version and audit events.
+  - id: INV-03
+    statement: At most one confirmed document version is active per logical contract.
+  - id: INV-04
+    statement: Stellar stores only a SHA-256 hash and a hash-derived key; no PII or document bytes.
+  - id: INV-05
+    statement: Stellar calls run through a durable outbox outside the request path.
+  - id: INV-06
+    statement: Every download requires authorization and yields a time-limited URL.
