@@ -17,11 +17,11 @@ const statusNames: Record<string, string> = {
 
 export function ContractsPage({
   onNavigate,
-  initialView = "workbench",
+  initialView = "stellar",
   initialContractId = ""
 }: {
   onNavigate: (page: string) => void;
-  initialView?: "workbench" | "list";
+  initialView?: "workbench" | "list" | "stellar";
   initialContractId?: string;
 }) {
   const [activeTab, setActiveTab] = useState<"workbench" | "list" | "stellar">(initialView);
