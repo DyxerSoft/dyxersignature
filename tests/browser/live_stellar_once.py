@@ -11,6 +11,7 @@ import time
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
+from pdf_fixture import valid_pdf_text
 
 BASE = os.getenv("PUBLIC_URL", "https://signature.dyxersoft.com").rstrip("/")
 REFERENCE = "QA-LIVE-STELLAR-20261122"
@@ -28,7 +29,7 @@ def main():
             response = page.goto(BASE + "/", wait_until="domcontentloaded", timeout=45000)
             assert response and response.status == 200, "Demo homepage not HTTP 200"
             page.locator(".stats-grid .stat-card").first.wait_for(timeout=30000)
-            result = page.evaluate("""async (reference) => {
+            result = page.evaluate("""async ({reference, pdfText}) => {
               const jwt = sessionStorage.getItem("dyxersignature.demo-token");
               if (!jwt) throw new Error("No demo JWT");
               async function request(method, path, data, contentType) {
@@ -91,7 +92,7 @@ def main():
               return {id:contract.id, versionId:version.id, stages,
                 before:{contracts:initial.contracts.total,signatures:initial.signatures.total},
                 after:{contracts:later.contracts.total,signatures:later.signatures.total}};
-            }""", REFERENCE)
+            }""", {"reference": REFERENCE, "pdfText": valid_pdf_text("Inmobiliaria Juanjo - Contrato de reserva")})
             report.update(result)
             report["stages"].append("Public API create/upload/review/sign/audit/dashboard checks passed")
             # Wait for at most 60 seconds: Testnet confirmation is asynchronous.
