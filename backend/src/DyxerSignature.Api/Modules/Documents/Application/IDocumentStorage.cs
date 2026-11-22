@@ -8,20 +8,6 @@ public interface IDocumentStorage
         Stream content,
         CancellationToken cancellationToken);
 
-    Task<string> SaveSignatureCropAsync(
-        Guid contractId,
-        Guid digitizationJobId,
-        string signatureFileName,
-        Stream content,
-        CancellationToken cancellationToken);
-
-    Task<string> SaveScanAsync(
-        Guid contractId,
-        Guid digitizationJobId,
-        string fileName,
-        Stream content,
-        CancellationToken cancellationToken);
-
     Task<Stream> OpenReadAsync(string storageKey, CancellationToken cancellationToken);
 
     Task DeleteAsync(string storageKey, CancellationToken cancellationToken);

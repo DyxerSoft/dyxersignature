@@ -17,9 +17,7 @@ public sealed class EvidenceManifestBuilder
     public EvidenceManifest Build(
         Contract contract,
         ContractDocumentVersion version,
-        string? previousDocumentHash,
-        string? ocrEngine = null,
-        int? detectedSignaturesCount = null)
+        string? previousDocumentHash)
     {
         if (version.DocumentHash is null || version.SignedAtUtc is null)
             throw new InvalidOperationException("The document version must be signed before evidence is generated.");
@@ -39,12 +37,6 @@ public sealed class EvidenceManifestBuilder
                 writer.WriteString("previousDocumentSha256", previousDocumentHash);
             else
                 writer.WriteNull("previousDocumentSha256");
-
-            if (!string.IsNullOrWhiteSpace(ocrEngine))
-            {
-                writer.WriteString("ocrEngine", ocrEngine);
-                writer.WriteNumber("detectedSignaturesCount", detectedSignaturesCount ?? 0);
-            }
 
             writer.WriteEndObject();
         }
