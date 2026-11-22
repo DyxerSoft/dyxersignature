@@ -1,122 +1,58 @@
-import { useEffect, useState } from "react";
-import { getContract, getDownloadUrl, listContracts, verifyVersion } from "../features/stellar/api";
-import type { ContractDetail, ContractListItem, DocumentVerification } from "../features/stellar/types";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { documentFileUrl, getDocuments, type TemplateDocument, uploadDocument } from "../features/documents/api";
 import { Icon } from "./Icon";
 import { PageFooter } from "./DashboardPage";
 
-/** La API del MVP almacena documentos como versiones de contrato, no como plantillas independientes. */
-export function DocumentsPage({ onNavigate }: { onNavigate: (page: string) => void }) {
-  const [contracts, setContracts] = useState<ContractListItem[]>([]);
-  const [selectedId, setSelectedId] = useState("");
-  const [detail, setDetail] = useState<ContractDetail | null>(null);
-  const [error, setError] = useState("");
-  const [actionError, setActionError] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [verifications, setVerifications] = useState<Record<string, DocumentVerification>>({});
+const categories=["Adenda","Contrato","Acuerdo","Anexo","Poder","Carta","Otro"];
 
-  useEffect(() => {
-    let live = true;
-    void listContracts(1, 100).then(response => {
-      if (!live) return;
-      setContracts(response.items);
-      if (response.items.length > 0) setSelectedId(response.items[0].id);
-    }).catch((cause: unknown) => {
-      if (live) setError(cause instanceof Error ? cause.message : "No se pudo obtener los contratos.");
-    });
-    return () => { live = false; };
-  }, []);
+export function DocumentsPage({ onNavigate }: { onNavigate: (page:string)=>void }) {
+  const [documents,setDocuments]=useState<TemplateDocument[]>([]);
+  const [name,setName]=useState("");
+  const [category,setCategory]=useState(categories[0]);
+  const [tagsText,setTagsText]=useState("");
+  const [file,setFile]=useState<File|null>(null);
+  const [query,setQuery]=useState("");
+  const [categoryFilter,setCategoryFilter]=useState("Todas");
+  const [busy,setBusy]=useState(false);
+  const [error,setError]=useState("");
+  const [loadError,setLoadError]=useState("");
+  const [notice,setNotice]=useState("");
 
-  useEffect(() => {
-    if (!selectedId) { setDetail(null); return; }
-    let live = true;
-    setError("");
-    setDetail(null);
-    void getContract(selectedId).then(data => {
-      if (live) setDetail(data);
-    }).catch((cause: unknown) => {
-      if (live) setError(cause instanceof Error ? cause.message : "No se pudieron consultar las versiones.");
-    });
-    return () => { live = false; };
-  }, [selectedId]);
-
-  async function download(versionId: string) {
-    setActionError("");
-    setBusy(true);
-    try {
-      const response = await getDownloadUrl(versionId);
-      window.location.assign(response.downloadUrl);
-    } catch (cause) {
-      setActionError(cause instanceof Error ? cause.message : "No se pudo obtener el enlace de descarga.");
-      setBusy(false);
-    }
+  async function refresh(){
+    try{setDocuments(await getDocuments());setLoadError("");}
+    catch(cause){setLoadError(cause instanceof Error?cause.message:"No se pudo cargar el catálogo.");}
   }
+  useEffect(()=>{void refresh();},[]);
+  const filtered=useMemo(()=>documents.filter(doc=>(categoryFilter==="Todas"||doc.category===categoryFilter)&&`${doc.name} ${doc.fileName} ${doc.category} ${doc.tags.join(" ")}`.toLocaleLowerCase().includes(query.toLocaleLowerCase())),[documents,query,categoryFilter]);
 
-  async function verify(versionId: string) {
-    if (!selectedId) return;
-    setActionError("");
-    setBusy(true);
-    try {
-      const result = await verifyVersion(selectedId, versionId);
-      setVerifications(current => ({ ...current, [versionId]: result }));
-    } catch (cause) {
-      setActionError(cause instanceof Error ? cause.message : "No se pudo verificar el archivo.");
-    } finally {
-      setBusy(false);
-    }
+  async function handleUpload(event:FormEvent){
+    event.preventDefault();if(!file)return;
+    const form=event.currentTarget as HTMLFormElement;
+    setBusy(true);setError("");setNotice("");
+    try{
+      const saved=await uploadDocument(file,name||file.name.replace(/\.[^.]+$/,""),category,tagsText.split(",").map(tag=>tag.trim()).filter(Boolean));
+      setDocuments(current=>[saved,...current]);setName("");setTagsText("");setFile(null);setNotice("Documento base agregado al catálogo.");form.reset();
+    }catch(cause){setError(cause instanceof Error?cause.message:"No se pudo subir el documento.");}
+    finally{setBusy(false);}
   }
 
   return <div className="section-content">
-    <div className="section-intro">
-      <span className="eyebrow">BIBLIOTECA DE VERSIONES · STELLAR</span>
-      <h2>Documentos</h2>
-      <p>Versiones PDF almacenadas en SeaweedFS S3, con integridad SHA-256 y evidencia de Stellar.</p>
-    </div>
-    <section className="panel document-workspace">
-      <div className="panel-heading"><div><span className="panel-icon"><Icon name="file" size={20}/></span>
-        <div><h3>Documentos por contrato</h3><p>Selecciona un contrato para consultar sus archivos inmutables.</p></div>
-      </div><button className="primary-button" type="button" onClick={() => onNavigate("Contratos")}>
-        <Icon name="plus" size={16}/> Cargar PDF desde Contratos
-      </button></div>
-      <div style={{ padding: "1rem" }}>
-        <label htmlFor="document-contract">Contrato</label>
-        <select id="document-contract" value={selectedId} onChange={event => {
-          setSelectedId(event.target.value);
-          setVerifications({});
-        }} style={{ width: "100%", maxWidth: 560, marginTop: "0.5rem" }}>
-          <option value="">Selecciona un contrato</option>
-          {contracts.map(contract => <option value={contract.id} key={contract.id}>
-            {contract.businessReference} · {contract.title}
-          </option>)}
-        </select>
-        {error && <p className="api-message" role="alert">{error}</p>}
-        {actionError && <p className="api-message" role="alert">{actionError}</p>}
-        {selectedId && !detail && !error && <p role="status">Consultando versiones…</p>}
-      </div>
-      <div className="contracts-table-wrap"><table className="contracts-table documents-table">
-        <thead><tr><th>VERSIÓN</th><th>ESTADO</th><th>SHA-256</th><th>ANCLAJE</th><th>ACCIONES</th></tr></thead>
-        <tbody>{detail && detail.versions.length > 0 ? detail.versions.map(version => <tr key={version.id}>
-          <td><strong>PDF · V{version.versionNumber}</strong><small>{new Date(version.createdAtUtc).toLocaleString("es-BO")}</small></td>
-          <td>{version.status}</td>
-          <td><code title={version.documentHash ?? ""}>{version.documentHash?.slice(0, 18) ?? "Sin hash"}…</code></td>
-          <td>{version.blockchain?.status ?? "Sin firmar"}</td>
-          <td><div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-            <button className="button-secondary" type="button" disabled={busy || !version.documentHash}
-              onClick={() => void download(version.id)}>Descargar</button>
-            <button className="button-secondary" type="button" disabled={busy || !version.signedAtUtc}
-              onClick={() => void verify(version.id)}>Verificar</button>
-          </div>
-          {verifications[version.id] && <small role="status">
-            {verifications[version.id].verified ? "Integridad y Stellar verificados" :
-              "Verificación pendiente o incompleta"}
-          </small>}</td>
-        </tr>) : <tr><td colSpan={5} className="empty-table-message">
-          {!selectedId ? "Selecciona un contrato para consultar documentos." :
-            error ? "Error al obtener los documentos." :
-            !detail ? "Cargando…" : "El contrato todavía no tiene PDFs versionados."}
-        </td></tr>}</tbody>
-      </table></div>
+    <div className="section-intro"><span className="eyebrow">BIBLIOTECA DE MODELOS</span><h2>Documentos base</h2><p>Sube plantillas Word o PDF para usarlas como origen de nuevos contratos. Una vez vinculadas, son inmutables.</p></div>
+    <section className="panel upload-panel">
+      <div className="panel-heading"><div><span className="panel-icon"><Icon name="plus" size={20}/></span><div><h3>Agregar documento base</h3><p>El archivo original se conserva. Para sustituirlo, sube una nueva plantilla.</p></div></div></div>
+      <form className="template-upload-form" onSubmit={handleUpload}>
+        <label className="upload-file-field"><span className="upload-file-icon"><Icon name="file" size={24}/></span><strong>Selecciona un documento</strong><small>{file?file.name:"PDF, DOC o DOCX · hasta 24 MB"}</small><input id="template-file" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required onChange={event=>setFile(event.target.files?.[0]??null)}/></label>
+        <label>Nombre del modelo<input value={name} onChange={event=>setName(event.target.value)} placeholder="Ej. Contrato de servicios estándar" maxLength={200}/></label>
+        <label>Categoría<select value={category} onChange={event=>setCategory(event.target.value)}>{categories.map(item=><option key={item}>{item}</option>)}</select></label>
+        <label className="tags-field">Etiquetas<input value={tagsText} onChange={event=>setTagsText(event.target.value)} placeholder="servicio, confidencialidad, alquiler"/><small>Separa las etiquetas con comas.</small></label>
+        <button className="primary-button" type="submit" disabled={busy||!file}><Icon name="plus" size={16}/>{busy?"Guardando…":"Guardar documento"}</button>
+      </form>
+      {error&&<div className="api-message" role="alert">{error}</div>}{notice&&<p className="success-message" role="status">{notice}</p>}
     </section>
-    <p className="muted-copy">La biblioteca de plantillas independiente no tiene endpoints en el MVP. Los PDF nuevos se incorporan desde el taller Stellar de Contratos.</p>
+    <section className="panel document-workspace">
+      <div className="document-list-heading"><div><h3>Catálogo de modelos</h3><p>{filtered.length} de {documents.length} documentos base</p></div><div className="documents-filter-bar"><label className="document-search"><Icon name="search" size={18}/><input value={query} onChange={event=>setQuery(event.target.value)} placeholder="Buscar por nombre o etiqueta"/></label><label className="category-filter"><span>Categoría</span><select value={categoryFilter} onChange={event=>setCategoryFilter(event.target.value)}><option>Todas</option>{categories.map(item=><option key={item}>{item}</option>)}</select><Icon name="chevron" size={14}/></label></div></div>
+      <div className="contracts-table-wrap"><table className="contracts-table documents-table"><thead><tr><th>DOCUMENTO</th><th>CATEGORÍA</th><th>ETIQUETAS</th><th>FECHA</th><th>ACCIONES</th></tr></thead><tbody>{filtered.length===0?<tr><td className="empty-table-message" colSpan={5}>{loadError&&!documents.length?"No se pudo cargar la información. Intenta nuevamente.":"No hay información para mostrar."}</td></tr>:filtered.map(doc=><tr key={doc.id}><td><strong>{doc.name}</strong><small>{doc.fileName}</small></td><td>{doc.category}</td><td><div className="tag-list"><em>{doc.category}</em>{doc.tags.map(tag=><i key={tag}>{tag}</i>)}</div></td><td>{new Date(doc.createdAtUtc).toLocaleDateString("es-BO")}</td><td><div className="template-actions"><a href={documentFileUrl(doc.id,"view")} target="_blank" rel="noreferrer" className="secondary-action"><Icon name="file" size={15}/> Ver</a><a href={documentFileUrl(doc.id,"download")} className="secondary-action"><Icon name="arrow" size={15}/> Descargar</a><button className="secondary-action" onClick={()=>onNavigate("Contratos")}><Icon name="plus" size={15}/> Crear contrato</button></div></td></tr>)}</tbody></table></div>
+    </section>
     <PageFooter/>
   </div>;
 }
