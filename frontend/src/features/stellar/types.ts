@@ -65,7 +65,14 @@ export type DashboardMetrics = {
     averageHoursToFirstSignature: number;
     frequency?: { one: number; two: number; three: number; four: number; fivePlus: number };
   };
-  blockchain: { pending: number };
+  blockchain: {
+    pending: number;
+    confirmed?: number;
+    failed?: number;
+    retrying?: number;
+    confirmedLastHour?: number;
+    oldestPendingSeconds?: number;
+  };
 };
 
 export type DocumentVerification = {
