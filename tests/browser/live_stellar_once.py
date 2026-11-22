@@ -56,7 +56,7 @@ def main():
               let detail = await request("GET", "/contracts/" + contract.id);
               let version = detail.versions[0];
               if (!version) {
-                const file = new Blob(["%PDF-1.4\\n% Synthetic QA document - no personal data\\n%%EOF\\n"],
+                const file = new Blob([pdfText],
                   {type:"application/pdf"});
                 const form = new FormData();
                 form.append("file", file, "qa-testnet.pdf");
