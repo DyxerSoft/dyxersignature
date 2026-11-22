@@ -46,9 +46,9 @@ function CopyButton({ text, label }: { text: string; label?: string }) {
   );
 }
 
-export function ContractWorkbench() {
+export function ContractWorkbench({ initialContractId = "" }: { initialContractId?: string } = {}) {
   const [businessReference, setBusinessReference] = useState("");
-  const [contractId, setContractId] = useState("");
+  const [contractId, setContractId] = useState(initialContractId);
   const [contract, setContract] = useState<ContractDetail | null>(null);
 
   // REQ-DYXS-001 states
@@ -88,6 +88,13 @@ export function ContractWorkbench() {
       return data;
     });
   }
+
+  useEffect(() => {
+    if (initialContractId && initialContractId !== contractId) {
+      setContractId(initialContractId);
+      void refresh(initialContractId);
+    }
+  }, [initialContractId]);
 
   useEffect(() => {
     if (!contractId) return;
