@@ -248,6 +248,29 @@ code {
   font-weight: 650;
 }
 
+.error-banner {
+  margin-top: 1.25rem;
+  padding: 0.85rem 1.25rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: var(--radius-sm);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.error-banner-content {
+  color: #991b1b;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.error-banner-content strong {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
 .ocr-preview-card {
   margin-top: 1.5rem;
   padding: 1.25rem;

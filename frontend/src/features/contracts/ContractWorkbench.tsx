@@ -261,7 +261,10 @@ export function ContractWorkbench() {
             Referencia de negocio
             <input
               value={businessReference}
-              onChange={(event) => setBusinessReference(event.target.value)}
+              onChange={(event) => {
+                setBusinessReference(event.target.value);
+                if (error) setError("");
+              }}
               onFocus={(event) => event.target.select()}
               placeholder="Ej: GP-CONTRATO-001"
               autoFocus
@@ -334,7 +337,10 @@ export function ContractWorkbench() {
               borderRadius: "var(--radius-sm)",
               fontWeight: 600
             }}
-            onClick={() => setActiveTab("ocr")}
+            onClick={() => {
+              setActiveTab("ocr");
+              if (error) setError("");
+            }}
           >
             Digitalización con PaddleOCR (REQ-DYXS-002)
           </button>
@@ -355,7 +361,10 @@ export function ContractWorkbench() {
               borderRadius: "var(--radius-sm)",
               fontWeight: 600
             }}
-            onClick={() => setActiveTab("pdf")}
+            onClick={() => {
+              setActiveTab("pdf");
+              if (error) setError("");
+            }}
           >
             Subir PDF firmado directo (REQ-DYXS-001)
           </button>
@@ -380,7 +389,10 @@ export function ContractWorkbench() {
                 Imagen o escaneo (PDF, PNG, JPG)
                 <input
                   accept="application/pdf,image/png,image/jpeg,.pdf,.png,.jpg,.jpeg"
-                  onChange={(event) => setScanFile(event.target.files?.[0] ?? null)}
+                  onChange={(event) => {
+                    setScanFile(event.target.files?.[0] ?? null);
+                    if (error) setError("");
+                  }}
                   type="file"
                   required
                 />
@@ -405,7 +417,10 @@ export function ContractWorkbench() {
                 PDF firmado de prueba
                 <input
                   accept="application/pdf,.pdf"
-                  onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+                  onChange={(event) => {
+                    setFile(event.target.files?.[0] ?? null);
+                    if (error) setError("");
+                  }}
                   type="file"
                   required
                 />
@@ -473,7 +488,23 @@ export function ContractWorkbench() {
         </div>
       )}
 
-      {error && <p className="error-message" role="alert">{error}</p>}
+      {error && (
+        <div className="error-banner" role="alert" aria-live="assertive">
+          <div className="error-banner-content">
+            <strong>Atención: No se pudo completar la operación</strong>
+            <span>{error}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setError("")}
+            className="button-secondary"
+            style={{ minHeight: "28px", padding: "0.25rem 0.65rem", fontSize: "0.8rem", color: "var(--color-danger)" }}
+            aria-label="Descartar mensaje de error"
+          >
+            Descartar
+          </button>
+        </div>
+      )}
 
       {digitizationJob && (
         <div className="ocr-preview-card">
