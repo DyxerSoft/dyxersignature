@@ -1,0 +1,23 @@
+name: Stellar Testnet smoke
+
+on:
+  push:
+    branches:
+      - feat/stellar-hackathon-mvp
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  testnet-smoke:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[stellar-smoke]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+      - name: Submit and verify an ephemeral Stellar Testnet anchor
+        run: dotnet run --project backend/tools/StellarTestnetSmoke/StellarTestnetSmoke.csproj --configuration Release
