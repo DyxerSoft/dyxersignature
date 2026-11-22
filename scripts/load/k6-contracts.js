@@ -16,7 +16,31 @@ const failedAt = {
   link: new Counter('workflow_failed_download_link'),
   download: new Counter('workflow_failed_download'),
 };
-const syntheticPdf = '%PDF-1.4\n% Synthetic load-test document\n%%EOF\n';
+// A real single-page PDF with xref/trailer; avoid writing malformed PDF-header stubs.
+function createContractPdf() {
+  const commands = 'BT /F1 14 Tf 54 700 Td (Inmobiliaria Juanjo - Contrato de reserva) Tj ET\n';
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+    '<< /Length ' + commands.length + ' >>\nstream\n' + commands + 'endstream',
+  ];
+  let pdf = '%PDF-1.4\n';
+  const offsets = [0];
+  for (let i = 0; i < objects.length; i++) {
+    offsets.push(pdf.length);
+    pdf += (i + 1) + ' 0 obj\n' + objects[i] + '\nendobj\n';
+  }
+  const xref = pdf.length;
+  pdf += 'xref\n0 ' + offsets.length + '\n0000000000 65535 f \n';
+  for (const offset of offsets.slice(1)) {
+    pdf += String(offset).padStart(10, '0') + ' 00000 n \n';
+  }
+  return pdf + 'trailer\n<< /Size ' + offsets.length + ' /Root 1 0 R >>\n' +
+    'startxref\n' + xref + '\n%%EOF\n';
+}
+const syntheticPdf = createContractPdf();
 const baseUrl = (__ENV.BASE_URL || 'http://127.0.0.1:8080').replace(/\/$/, '');
 const vus = Number(__ENV.K6_VUS || 100);
 const duration = __ENV.K6_DURATION || '60s';
