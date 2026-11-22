@@ -54,23 +54,23 @@ services:
         # SeaweedFS can accept ListBuckets before its Raft leader and filer are
         # ready for CreateBucket. Retry PUT and re-check HEAD idempotently.
         bucket_attempt=1
-        while [ "$bucket_attempt" -le 8 ]; do
+        while [ "$$bucket_attempt" -le 8 ]; do
           if aws --cli-connect-timeout 3 --cli-read-timeout 20 s3api head-bucket --bucket dyxersignature --endpoint-url http://seaweedfs:8333 >/dev/null 2>&1; then
             echo "S3 bucket dyxersignature is ready"
             exit 0
           fi
-          echo "Preparing S3 bucket dyxersignature (attempt $bucket_attempt/8)"
+          echo "Preparing S3 bucket dyxersignature (attempt $$bucket_attempt/8)"
           if aws --cli-connect-timeout 3 --cli-read-timeout 20 s3api create-bucket --bucket dyxersignature --endpoint-url http://seaweedfs:8333 >/dev/null 2>&1; then
             if aws --cli-connect-timeout 3 --cli-read-timeout 20 s3api head-bucket --bucket dyxersignature --endpoint-url http://seaweedfs:8333 >/dev/null 2>&1; then
               echo "S3 bucket dyxersignature created and verified"
               exit 0
             fi
           fi
-          if [ "$bucket_attempt" -lt 8 ]; then
+          if [ "$$bucket_attempt" -lt 8 ]; then
             echo "SeaweedFS bucket operations not ready; retrying after leader stabilizes" >&2
             sleep 3
           fi
-          bucket_attempt=$((bucket_attempt+1))
+          bucket_attempt=$$((bucket_attempt+1))
         done
         echo "ERROR: bucket dyxersignature not ready after 8 retries. S3 diagnostics:" >&2
         aws --cli-connect-timeout 3 --cli-read-timeout 20 s3api head-bucket --bucket dyxersignature --endpoint-url http://seaweedfs:8333 >&2 || true
