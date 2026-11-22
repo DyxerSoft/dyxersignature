@@ -3,6 +3,7 @@ using DyxerSignature.Api.Modules.Audit.Domain;
 using DyxerSignature.Api.Modules.Blockchain.Domain;
 using DyxerSignature.Api.Modules.Contracts.Domain;
 using DyxerSignature.Api.Modules.Evidence.Domain;
+using DyxerSignature.Api.Modules.Ingestion.Domain;
 using Microsoft.EntityFrameworkCore;
 
 namespace DyxerSignature.Api.Infrastructure.Persistence;
@@ -16,6 +17,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<EvidenceManifest> EvidenceManifests => Set<EvidenceManifest>();
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+    public DbSet<DigitizationJob> DigitizationJobs => Set<DigitizationJob>();
+    public DbSet<DigitizationSignatureCrop> DigitizationSignatureCrops => Set<DigitizationSignatureCrop>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -84,6 +87,27 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             entity.Property(x => x.PayloadJson).HasColumnType("jsonb").IsRequired();
             entity.Property(x => x.LastError).HasMaxLength(2000);
             entity.HasIndex(x => new { x.CompletedAtUtc, x.NextAttemptAtUtc });
+        });
+
+        modelBuilder.Entity<DigitizationJob>(entity =>
+        {
+            entity.ToTable("digitization_jobs");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(32);
+            entity.Property(x => x.FileName).HasMaxLength(255).IsRequired();
+            entity.Property(x => x.StorageKey).HasMaxLength(500).IsRequired();
+            entity.Property(x => x.ErrorMessage).HasMaxLength(2000);
+            entity.HasIndex(x => x.ContractId);
+            entity.HasMany(x => x.Signatures).WithOne().HasForeignKey(x => x.DigitizationJobId);
+        });
+
+        modelBuilder.Entity<DigitizationSignatureCrop>(entity =>
+        {
+            entity.ToTable("digitization_signature_crops");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.CropStorageKey).HasMaxLength(500).IsRequired();
+            entity.Property(x => x.BoundingBoxJson).HasColumnType("jsonb");
+            entity.HasIndex(x => x.DigitizationJobId);
         });
     }
 }
