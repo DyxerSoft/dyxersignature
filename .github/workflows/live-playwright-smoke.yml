@@ -28,6 +28,8 @@ jobs:
           python -m playwright install --with-deps chromium
       - name: Run desktop/mobile read-only UI and Dashboard KPI assertions
         run: python tests/browser/demo_smoke.py
+      - name: One idempotent synthetic contract and Stellar Testnet confirmation
+        run: python tests/browser/live_stellar_once.py
       - name: Upload sanitized browser report and captures
         if: always()
         uses: actions/upload-artifact@v4
