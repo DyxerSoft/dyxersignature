@@ -79,7 +79,7 @@ def run_viewport(browser, name, width, height):
             "signature_frequency": values["dashboard"]["signatures"]["frequency"]
         }
         outcome["steps"].append("Authorized dashboard and contracts APIs; aggregate KPI invariants consistent")
-        page.screenshot(path=str(OUT / (name + "-dashboard.png")), full_page=True, mask=page.locator(".profile-mini"))
+        page.screenshot(path=str(OUT / (name + "-dashboard.png")), full_page=True, mask=[page.locator(".profile-mini")])
 
         for section in ["Documentos", "Contratos", "Firmas", "Dashboard"]:
             if name == "mobile":
