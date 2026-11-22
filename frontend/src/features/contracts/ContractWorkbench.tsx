@@ -59,6 +59,7 @@ export function ContractWorkbench() {
   const [scanFile, setScanFile] = useState<File | null>(null);
   const [scanReason, setScanReason] = useState("");
   const [digitizationJob, setDigitizationJob] = useState<DigitizationJobDetail | null>(null);
+  const [ocrProgressStep, setOcrProgressStep] = useState<number>(0);
   const [activeTab, setActiveTab] = useState<"ocr" | "pdf">("ocr");
 
   // Modales y Visores
@@ -196,7 +197,11 @@ export function ContractWorkbench() {
     if (!scanFile || !contractId) return;
 
     setBusy(true);
+    setOcrProgressStep(1);
     setError("");
+
+    const timer1 = window.setTimeout(() => setOcrProgressStep(2), 1500);
+    const timer2 = window.setTimeout(() => setOcrProgressStep(3), 3500);
 
     try {
       const res = await uploadScanForOcr(contractId, scanFile, scanReason || undefined);
@@ -211,6 +216,9 @@ export function ContractWorkbench() {
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Fallo durante la digitalización OCR.");
     } finally {
+      window.clearTimeout(timer1);
+      window.clearTimeout(timer2);
+      setOcrProgressStep(0);
       setBusy(false);
     }
   }
@@ -391,6 +399,55 @@ export function ContractWorkbench() {
             </form>
           )}
         </div>
+
+      {ocrProgressStep > 0 && (
+        <div className="ocr-progress-banner" role="status" aria-live="polite">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <strong style={{ fontSize: "0.95rem", color: "#005fb8" }}>
+              Procesando digitalización y análisis inteligente...
+            </strong>
+            <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--color-text-muted)" }}>
+              Paso {ocrProgressStep} de 3
+            </span>
+          </div>
+
+          <div style={{
+            height: "6px",
+            background: "#dbeafe",
+            borderRadius: "3px",
+            marginTop: "0.75rem",
+            overflow: "hidden"
+          }}>
+            <div style={{
+              height: "100%",
+              background: "#005fb8",
+              width: ocrProgressStep === 1 ? "30%" : ocrProgressStep === 2 ? "70%" : "95%",
+              transition: "width 0.6s ease"
+            }} />
+          </div>
+
+          <div className="ocr-progress-steps">
+            <div className={`ocr-progress-step ${ocrProgressStep === 1 ? "active" : ocrProgressStep > 1 ? "completed" : ""}`}>
+              <span>1. Recepción y rasterización</span>
+            </div>
+            <div className={`ocr-progress-step ${ocrProgressStep === 2 ? "active" : ocrProgressStep > 2 ? "completed" : ""}`}>
+              <span>2. Inferencia PP-OCRv4</span>
+            </div>
+            <div className={`ocr-progress-step ${ocrProgressStep === 3 ? "active" : ""}`}>
+              <span>3. Segmentación y recorte de firmas</span>
+            </div>
+          </div>
+
+          <div style={{ marginTop: "1rem", display: "grid", gap: "0.75rem" }}>
+            <div className="skeleton" style={{ height: "18px", width: "40%" }} />
+            <div className="skeleton" style={{ height: "50px", width: "100%" }} />
+            <div style={{ display: "flex", gap: "1rem" }}>
+              <div className="skeleton" style={{ height: "110px", width: "140px" }} />
+              <div className="skeleton" style={{ height: "110px", width: "140px" }} />
+            </div>
+          </div>
+        </div>
+      )}
 
       {error && <p className="error-message" role="alert">{error}</p>}
 

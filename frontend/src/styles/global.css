@@ -256,6 +256,54 @@ code {
   border: 1px solid var(--color-border);
 }
 
+@keyframes skeleton-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.skeleton {
+  background: #e2e8f0;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+
+.ocr-progress-banner {
+  margin-top: 1.5rem;
+  padding: 1.25rem;
+  background: #f0f7ff;
+  border: 1px solid #bae0ff;
+  border-radius: var(--radius-sm);
+}
+
+.ocr-progress-steps {
+  display: flex;
+  gap: 1.25rem;
+  margin-top: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.ocr-progress-step {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.ocr-progress-step.active {
+  color: #005fb8;
+  font-weight: 700;
+}
+
+.ocr-progress-step.completed {
+  color: var(--color-success);
+  font-weight: 600;
+}
+
 .pill-success {
   color: var(--color-success);
   border-color: var(--color-success);
