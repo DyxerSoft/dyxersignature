@@ -2,7 +2,9 @@ import uuid
 import logging
 from contextlib import asynccontextmanager
 from typing import Optional, Dict
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from io import BytesIO
+from PIL import Image
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Header
 from fastapi.responses import FileResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -46,7 +48,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -65,10 +67,13 @@ async def health():
 async def process_scan(
     contract_id: str,
     file: UploadFile = File(...),
-    correctionReason: Optional[str] = Form(None)
+    correctionReason: Optional[str] = Form(None),
+    authorization: Optional[str] = Header(default=None)
 ):
     if not file or not file.filename:
         raise HTTPException(status_code=400, detail="Archivo escaneado requerido.")
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Token JWT requerido para digitalizar contratos.")
 
     try:
         content = await file.read()
@@ -99,13 +104,30 @@ async def process_scan(
                 )
             )
 
-        # 4. Notificar y registrar la versión firmada en el Backend .NET para anclaje Blockchain
+        # 4. La API Stellar solo admite PDF. Convertir escaneos de imagen a PDF.
+        draft_name = filename
+        draft_bytes = content
+        if not (filename.lower().endswith(".pdf") or content.startswith(b"%PDF")):
+            try:
+                image = Image.open(BytesIO(content)).convert("RGB")
+                buffer = BytesIO()
+                image.save(buffer, format="PDF")
+                draft_bytes = buffer.getvalue()
+                draft_name = filename.rsplit(".", 1)[0] + ".pdf"
+            except Exception as exc:
+                raise HTTPException(status_code=415, detail="Formato de escaneo no compatible.") from exc
+
+        # No registrar firma ni blockchain aquí: únicamente se sube un borrador.
         backend_resp = await backend_client.register_signed_version(
             contract_id=contract_id,
-            filename=filename,
-            file_bytes=content,
-            correction_reason=correctionReason or "Digitalización OCR PP-OCRv4"
+            filename=draft_name,
+            file_bytes=draft_bytes,
+            correction_reason=correctionReason or "Digitalización OCR PP-OCRv4",
+            authorization=authorization,
         )
+        if not isinstance(backend_resp, dict) or not backend_resp.get("documentVersionId"):
+            logger.warning("OCR procesado pero .NET no aceptó el borrador: %s", backend_resp.get("status") if isinstance(backend_resp, dict) else "unknown")
+            raise HTTPException(status_code=502, detail="La API .NET no pudo registrar la versión; no se generó evidencia blockchain.")
 
         avg_conf = ocr_result["average_confidence"]
         requires_review = avg_conf < 0.85
@@ -118,14 +140,10 @@ async def process_scan(
             requiresReview=requires_review,
             extractedTextSummary=ocr_result["raw_text"],
             signaturesDetected=detected_signatures_list,
-            generatedDocumentVersionId=backend_resp.get("id") if isinstance(backend_resp, dict) else None,
-            documentHash=backend_resp.get("documentHash") if isinstance(backend_resp, dict) else None,
-            versionStatus="Active",
-            blockchain=BlockchainInfo(
-                status="Pending",
-                transactionHash=None,
-                blockNumber=None
-            )
+            generatedDocumentVersionId=backend_resp.get("documentVersionId"),
+            documentHash=backend_resp.get("documentHash"),
+            versionStatus="Draft",
+            blockchain=None
         )
         jobs_store[job_id] = job_response
 

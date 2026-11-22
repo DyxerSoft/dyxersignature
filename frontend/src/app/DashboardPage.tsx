@@ -1,106 +1,121 @@
 import { useEffect, useState } from "react";
+import { Icon, type IconName } from "./Icon";
 import { getDashboard } from "../features/stellar/api";
 import type { DashboardMetrics } from "../features/stellar/types";
-import { Icon, type IconName } from "./Icon";
 
-/** Indicadores de PostgreSQL. No se presentan valores inventados para la demo. */
 export function DashboardPage({ onNavigate }: { onNavigate: (page: string) => void }) {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
-
   useEffect(() => {
     let live = true;
-    void getDashboard().then(result => {
-      if (live) { setMetrics(result); setError(""); }
+    void getDashboard().then(data => {
+      if (live) { setMetrics(data); setError(""); }
     }).catch((cause: unknown) => {
-      if (live) setError(cause instanceof Error ? cause.message : "No se pudo consultar el Dashboard.");
-    }).finally(() => { if (live) setLoading(false); });
+      if (live) setError(cause instanceof Error ? cause.message : "No se pudo consultar la API.");
+    });
     return () => { live = false; };
   }, []);
 
-  const cards: { title: string; value: number; icon: IconName; tone: string; detail: string }[] = metrics ? [
-    { title: "Contratos", value: metrics.contracts.total, icon: "contract", tone: "violet", detail: "Registrados en PostgreSQL" },
-    { title: "Versiones PDF", value: metrics.documents.versions, icon: "file", tone: "blue", detail: "Documentos versionados" },
-    { title: "Firmas registradas", value: metrics.signatures.total, icon: "pen", tone: "green", detail: metrics.signatures.thisMonth + " este mes" },
-    { title: "Anclajes pendientes", value: metrics.blockchain.pending, icon: "clock", tone: "amber", detail: "Outbox Stellar Testnet" }
+  const stats: [string, string, IconName, string, string][] = metrics ? [
+    ["Documentos", String(metrics.documents.versions), "file", "violet", "Versiones de contratos"],
+    ["Contratos", String(metrics.contracts.total), "contract", "blue", "Registros en PostgreSQL"],
+    ["Firmas completadas", String(metrics.signatures.total), "pen", "green", metrics.signatures.thisMonth + " este mes"],
+    ["Anclajes pendientes", String(metrics.blockchain.pending), "clock", "amber", "Stellar Testnet"]
   ] : [];
-
-  const statusItems = Object.entries(metrics?.contracts.byStatus ?? {});
-  const maximumStatus = Math.max(1, ...statusItems.map(([, count]) => count));
-  const histogram = [
-    { label: "1 vez", count: metrics?.signatures.frequency?.one ?? 0 },
-    { label: "2 veces", count: metrics?.signatures.frequency?.two ?? 0 },
-    { label: "3 veces", count: metrics?.signatures.frequency?.three ?? 0 },
-    { label: "4 veces", count: metrics?.signatures.frequency?.four ?? 0 },
-    { label: "5+ veces", count: metrics?.signatures.frequency?.fivePlus ?? 0 }
-  ];
-  const maximumFrequency = Math.max(1, ...histogram.map(item => item.count));
+  const byStatus = Object.entries(metrics?.contracts.byStatus ?? {});
+  const maxStatus = Math.max(1, ...byStatus.map(([, n]) => n));
+  const frequency = metrics?.signatures.frequency;
+  const bins = [
+    ["1 vez", frequency?.one ?? 0], ["2 veces", frequency?.two ?? 0],
+    ["3 veces", frequency?.three ?? 0], ["4 veces", frequency?.four ?? 0],
+    ["5+ veces", frequency?.fivePlus ?? 0]
+  ] as const;
+  const maxFrequency = Math.max(1, ...bins.map(([, count]) => count));
 
   return <div className="dashboard-content">
-    <div className="welcome-row">
-      <div>
-        <span className="eyebrow">DATOS REALES · STELLAR TESTNET</span>
-        <h2>Resumen de operaciones</h2>
-        <p>Indicadores del backend en PostgreSQL, sin datos de ejemplo artificiales.</p>
-      </div>
-      {metrics && <span className="date-filter">Actualizado {new Date(metrics.generatedAtUtc).toLocaleString("es-BO")}</span>}
-    </div>
-    {loading && <p role="status">Cargando indicadores…</p>}
-    {error && <div className="api-message" role="alert">No se pudo obtener el Dashboard: {error}</div>}
+    <div className="welcome-row"><div><span className="eyebrow">RESUMEN DE ACTIVIDAD</span>
+      <h2>Panel de gestión documental</h2>
+      <p>Información real del backend. Sin contadores ni actividades simulados.</p>
+    </div><span className="date-filter"><span className="calendar-icon">▦</span>
+      {metrics ? new Date(metrics.generatedAtUtc).toLocaleString("es-BO") : "Consultando datos…"}
+    </span></div>
+    {error && <p className="api-message" role="alert">{error}</p>}
+    {!metrics && !error && <p role="status">Cargando indicadores de PostgreSQL…</p>}
     {metrics && <>
       <section className="stats-grid" aria-label="Resumen de gestión">
-        {cards.map(card => <article className="stat-card" key={card.title}>
-          <div className={"stat-icon " + card.tone}><Icon name={card.icon} size={23}/></div>
-          <div className="stat-details">
-            <span>{card.title}</span>
-            <strong>{card.value.toLocaleString("es-BO")}</strong>
-            <small>{card.detail}</small>
-          </div>
+        {stats.map(([name,value,icon,tone,detail]) => <article className="stat-card" key={name}>
+          <div className={"stat-icon " + tone}><Icon name={icon} size={23}/></div>
+          <div className="stat-details"><span>{name}</span><strong>{value}</strong>
+            <small>{detail}</small></div>
         </article>)}
       </section>
       <section className="analytics-grid">
         <article className="panel activity-panel">
           <div className="panel-heading"><div><span className="panel-icon"><Icon name="chart" size={19}/></span>
-            <div><h3>Firmas por contrato</h3><p>Distribución real de frecuencia de firmas registradas</p></div>
+            <div><h3>Actividad de firmas</h3><p>Indicadores acumulados y del mes actual</p></div>
           </div></div>
-          <div className="frequency-summary">
-            <div><span>Promedio de firmas por contrato</span><strong>{metrics.signatures.averagePerContract.toFixed(2)} <small>veces</small></strong></div>
-            <div><span>Horas promedio hasta primera firma</span><strong>{metrics.signatures.averageHoursToFirstSignature.toFixed(2)} <small>h</small></strong></div>
+          <div className="frequency-summary" style={{ padding: "1rem 1.5rem" }}>
+            <div><span>Firmas este mes</span><strong>{metrics.signatures.thisMonth}</strong></div>
+            <div><span>Firmas registradas</span><strong>{metrics.signatures.total}</strong></div>
+            <div><span>Horas hasta primera firma (promedio)</span><strong>{metrics.signatures.averageHoursToFirstSignature.toFixed(2)} h</strong></div>
           </div>
-          <div className="frequency-bars" style={{ minHeight: 180, alignItems: "end", paddingTop: 16 }} aria-label="Frecuencia de firmas">
-            {histogram.map(item => <div className="frequency-col" key={item.label}>
-              <strong>{item.count}</strong>
-              <div className="freq-bar" style={{ height: Math.max(5, item.count / maximumFrequency * 130) + "px" }}/>
-              <span>{item.label}</span>
-            </div>)}
-          </div>
-          <p className="muted-copy">Solo contratos que tienen al menos una firma. Los contratos sin firma no forman parte del histograma.</p>
+          <p style={{ padding: "0 1.5rem" }}>Para ver cada evento y su evidencia, consulta la trazabilidad del contrato.</p>
         </article>
         <article className="panel contracts-panel">
           <div className="panel-heading"><div><span className="panel-icon"><Icon name="contract" size={20}/></span>
-            <div><h3>Estados de contratos</h3><p>Distribución desde el sistema transaccional</p></div>
+            <div><h3>Estado de contratos</h3><p>Distribución por estado actual</p></div>
           </div></div>
-          {statusItems.length === 0 ? <p className="empty-table-message">Todavía no hay contratos registrados.</p> :
-            <div style={{ padding: "1.25rem", display: "grid", gap: "1rem" }}>
-              {statusItems.map(([status, count]) => <div key={status}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                  <span>{status}</span><strong>{count} ({Math.round(count / Math.max(1, metrics.contracts.total) * 100)}%)</strong>
-                </div>
-                <div className="bar-track"><i style={{ display: "block", width: count / maximumStatus * 100 + "%", height: 8, background: "var(--color-primary)", borderRadius: 8 }}/></div>
+          <div className="donut-layout">
+            <div className="donut" style={{ background: "conic-gradient(#6e24f5 " + (metrics.contracts.active / Math.max(1, metrics.contracts.total) * 100) + "%, #eae9f4 0)" }}>
+              <div><strong>{metrics.contracts.total}</strong><span>Contratos</span></div>
+            </div>
+            <div className="status-list">
+              {byStatus.length === 0 ? <p>Sin contratos</p> : byStatus.map(([status,n]) =>
+                <div key={status}><span><i className="status-dot signed"/>{status}</span>
+                  <b>{Math.round(n / Math.max(1,metrics.contracts.total) * 100)}%</b><small>{n}</small>
+                </div>)}
+            </div>
+          </div>
+        </article>
+      </section>
+      <section className="lower-grid">
+        <article className="panel types-panel">
+          <div className="panel-heading"><div><span className="panel-icon"><Icon name="layers" size={20}/></span>
+            <div><h3>Contratos por estado</h3><p>Registros persistidos en el backend</p></div>
+          </div><button className="text-link" onClick={() => onNavigate("Contratos")}>Ver contratos</button></div>
+          <div className="type-list">
+            {byStatus.length === 0 ? <p>Sin contratos todavía.</p> : byStatus.map(([status,n]) =>
+              <div className="type-row" key={status}>
+                <span className="type-symbol"><Icon name="contract" size={17}/></span>
+                <span className="type-name">{status}</span>
+                <div className="bar-track"><i style={{width: n / maxStatus * 100 + "%"}}/></div>
+                <strong>{n}</strong>
               </div>)}
-            </div>}
+          </div>
+        </article>
+        <article className="panel frequency-panel">
+          <div className="panel-heading"><div><span className="panel-icon"><Icon name="chart" size={20}/></span>
+            <div><h3>Frecuencia de firma de contratos</h3><p>Firmas registradas por contrato</p></div>
+          </div></div>
+          <div className="frequency-summary"><div><span>Promedio de firmas por contrato</span>
+            <strong>{metrics.signatures.averagePerContract.toFixed(2)} <small>veces</small></strong>
+          </div></div>
+          <div className="frequency-bars">
+            {bins.map(([label,count]) => <div className="frequency-col" key={label}>
+              <strong>{count}</strong>
+              <div className="freq-bar" style={{height: Math.max(3,count / maxFrequency * 100) + "%"}}/>
+              <span>{label}</span>
+            </div>)}
+          </div>
         </article>
       </section>
       <section className="panel recent-panel">
-        <div className="panel-heading"><div><span className="panel-icon"><Icon name="shield" size={20}/></span>
-          <div><h3>Evidencia verificable</h3><p>Los contratos y sus versiones están disponibles en los módulos de gestión</p></div>
-        </div></div>
-        <div style={{ padding: "1.25rem", display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
-          <button className="primary-button" onClick={() => onNavigate("Contratos")}>Gestionar contratos <Icon name="arrow" size={16}/></button>
-          <button className="button-secondary" onClick={() => onNavigate("Documentos")}>Consultar PDFs</button>
-          <button className="button-secondary" onClick={() => onNavigate("Trazabilidad")}>Ver auditoría</button>
-        </div>
+        <div className="panel-heading"><div><span className="panel-icon"><Icon name="clock" size={20}/></span>
+          <div><h3>Trazabilidad y evidencia</h3><p>Consulta los movimientos directamente desde cada contrato</p></div>
+        </div><button className="text-link" onClick={()=>onNavigate("Trazabilidad")}>
+          Ver trazabilidad <Icon name="arrow" size={14}/>
+        </button></div>
+        <div style={{padding:"1.5rem"}}>Los eventos de auditoría se muestran desde el módulo Trazabilidad, sin registros de muestra.</div>
       </section>
     </>}
     <PageFooter/>
@@ -110,6 +125,6 @@ export function DashboardPage({ onNavigate }: { onNavigate: (page: string) => vo
 export function PageFooter() {
   return <footer className="dashboard-footer">
     <span>© 2026 DyxerSignature · Grupo Paz</span>
-    <span><Icon name="shield" size={14}/> Evidencia SHA-256 y anclaje en Stellar Testnet</span>
+    <span><Icon name="shield" size={14}/> Evidencia SHA-256 y Stellar Testnet</span>
   </footer>;
 }

@@ -1,0 +1,35 @@
+name: Frontend restore scope and OCR BFF contract
+
+on:
+  pull_request:
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend-restore-guard.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scope-and-bff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify no backend or infrastructure was changed by this PR
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin "${{ github.event.pull_request.base.sha }}" --depth=1
+          files="$(git diff --name-only "${{ github.event.pull_request.base.sha }}" HEAD)"
+          printf '%s\n' "$files"
+          if printf '%s\n' "$files" | grep -E -v '^(frontend/|\.github/workflows/frontend-restore-guard\.yml$)'; then
+            echo "ERROR: frontend repair changed files outside its approved scope" >&2
+            exit 1
+          fi
+          test -z "$(git diff --name-only "${{ github.event.pull_request.base.sha }}" HEAD -- backend/)"
+      - name: Validate OCR BFF Python syntax and authenticated .NET route
+        run: |
+          python3 -m compileall -q frontend/bff/src frontend/bff/tests
+          python3 -m unittest discover -v -s frontend/bff/tests -p 'test_*.py'
