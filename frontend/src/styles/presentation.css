@@ -58,3 +58,98 @@
   .activity-event time {white-space:normal;max-width:100px;text-align:right;}
   .topbar-description {display:none;}
 }
+
+
+/* Dashboard signature trend: never inherit the absolutely positioned
+   .frequency-summary rules used by the separate frequency histogram. */
+.analytics-grid .activity-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.signature-chart {
+  min-height: 134px;
+  padding: 2px 8px 0;
+  flex: 1 0 auto;
+}
+.signature-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  align-items: end;
+  gap: 8px;
+  width: 100%;
+  height: 134px;
+}
+.signature-chart-month {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+.signature-chart-month > strong {
+  color: #262049;
+  font-family: Manrope, sans-serif;
+  font-size: 12px;
+}
+.signature-chart-track {
+  height: 92px;
+  width: 100%;
+  max-width: 60px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  border-bottom: 1px solid #e3e0f0;
+  background: repeating-linear-gradient(to top, transparent 0, transparent 29px, #f1eff8 30px, #f1eff8 31px);
+}
+.signature-chart-bar {
+  width: min(70%, 35px);
+  border-radius: 7px 7px 0 0;
+  background: linear-gradient(180deg, #9258ff, #6828ed);
+  transition: height .2s ease;
+}
+.signature-chart-month > span {
+  color: #7a7f98;
+  font-size: 10px;
+  text-transform: capitalize;
+}
+.signature-chart-unavailable {
+  color: #747b91;
+  padding: 36px 12px;
+  text-align: center;
+  font-size: 12px;
+}
+.signature-metric-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+  width: 100%;
+  margin-top: auto;
+}
+.signature-metric-strip > div {
+  border: 1px solid #ece7fb;
+  border-radius: 9px;
+  background: #faf9ff;
+  padding: 9px 10px;
+  min-width: 0;
+}
+.signature-metric-strip span,
+.signature-metric-strip strong {display:block;}
+.signature-metric-strip span {
+  color:#747b96;
+  font-size: 9px;
+  line-height: 1.4;
+}
+.signature-metric-strip strong {
+  color: #171638;
+  font: 800 17px/1.4 Manrope,sans-serif;
+  margin-top: 3px;
+}
+@media (max-width: 580px) {
+  .signature-chart {padding: 2px 0;}
+  .signature-chart-grid {gap: 4px;}
+  .signature-metric-strip {grid-template-columns: 1fr;gap: 6px;}
+  .signature-metric-strip > div {display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;}
+  .signature-metric-strip strong {margin:0;white-space:nowrap;}
+}
