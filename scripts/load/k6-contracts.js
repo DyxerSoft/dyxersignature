@@ -5,6 +5,15 @@ import { Counter, Trend } from 'k6/metrics';
 const contractsCompleted = new Counter('contracts_completed');
 const contractWorkflowErrors = new Counter('contract_workflow_errors');
 const contractWorkflowDuration = new Trend('contract_workflow_duration', true);
+const failedAt = {
+  create: new Counter('workflow_failed_create'),
+  upload: new Counter('workflow_failed_upload'),
+  review: new Counter('workflow_failed_review'),
+  sign: new Counter('workflow_failed_sign'),
+  verify: new Counter('workflow_failed_verify'),
+  link: new Counter('workflow_failed_download_link'),
+  download: new Counter('workflow_failed_download'),
+};
 const syntheticPdf = '%PDF-1.4\n% Synthetic load-test document\n%%EOF\n';
 const baseUrl = (__ENV.BASE_URL || 'http://127.0.0.1:8080').replace(/\/$/, '');
 const vus = Number(__ENV.K6_VUS || 100);
@@ -64,6 +73,7 @@ export default function (data) {
   });
   if (!contractCreated) {
     contractWorkflowErrors.add(1);
+    failedAt.create.add(1);
     contractWorkflowDuration.add(Date.now() - startedAt);
     return;
   }
@@ -83,6 +93,7 @@ export default function (data) {
   });
   if (!uploadSucceeded) {
     contractWorkflowErrors.add(1);
+    failedAt.upload.add(1);
     contractWorkflowDuration.add(Date.now() - startedAt);
     return;
   }
@@ -97,6 +108,7 @@ export default function (data) {
   );
   if (!check(reviewed, { 'document hash reviewed': (result) => result.status === 204 })) {
     contractWorkflowErrors.add(1);
+    failedAt.review.add(1);
     contractWorkflowDuration.add(Date.now() - startedAt);
     return;
   }
@@ -114,6 +126,7 @@ export default function (data) {
   });
   if (!signAccepted) {
     contractWorkflowErrors.add(1);
+    failedAt.sign.add(1);
     contractWorkflowDuration.add(Date.now() - startedAt);
     return;
   }
@@ -128,6 +141,7 @@ export default function (data) {
   });
   if (!contentMatches) {
     contractWorkflowErrors.add(1);
+    failedAt.verify.add(1);
     contractWorkflowDuration.add(Date.now() - startedAt);
     return;
   }
@@ -142,6 +156,7 @@ export default function (data) {
   });
   if (!linkIssued) {
     contractWorkflowErrors.add(1);
+    failedAt.link.add(1);
     contractWorkflowDuration.add(Date.now() - startedAt);
     return;
   }
@@ -156,6 +171,7 @@ export default function (data) {
     contractsCompleted.add(1);
   } else {
     contractWorkflowErrors.add(1);
+    failedAt.download.add(1);
   }
 }
 
@@ -166,6 +182,13 @@ export function handleSummary(data) {
   const p95 = data.metrics.contract_workflow_duration?.values['p(95)'] || 0;
   const throughput = data.metrics.contracts_completed?.values.rate || 0;
   const requestErrorRate = data.metrics.http_req_failed?.values.rate || 0;
+  const stageFailures = Object.fromEntries(
+    Object.entries(failedAt).map(([stage, metric]) => [
+      stage,
+      data.metrics[metric.name]?.values.count || 0,
+    ]),
+  );
+  const checks = (data.root_group?.checks || []).map(({ name, passes, fails }) => ({ name, passes, fails }));
   const summary = {
     users: vus,
     requestedDuration: duration,
@@ -175,6 +198,8 @@ export function handleSummary(data) {
     contractsPerSecond: Number(throughput.toFixed(3)),
     p95WorkflowMs: Number(p95.toFixed(2)),
     httpRequestErrorRate: Number(requestErrorRate.toFixed(5)),
+    stageFailures,
+    checks,
     targetBandContractsPerSecond: '7-10',
     targetMinimumMet: throughput >= 7,
     scope: 'Create contract, upload synthetic PDF to SeaweedFS, review SHA-256, record signer and enqueue PostgreSQL outbox, verify stored bytes, authorize a temporary URL and download the private PDF; real Stellar confirmation is measured separately by a bounded Testnet smoke workflow.',
