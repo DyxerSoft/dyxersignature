@@ -51,11 +51,17 @@ Las rutas de negocio requieren JWT. La descarga retorna la URL breve después de
 
 `dotnet run --project backend/tools/StellarTestnetSmoke/StellarTestnetSmoke.csproj` genera una clave efímera en memoria, solicita fondos a Friendbot Testnet y ancla/verifica tres hashes aleatorios de forma secuencial mediante el SDK usado por la API. Registra latencia por muestra y transacciones verificadas por segundo; la semilla no se imprime ni se persiste. En GitHub Actions el smoke test corre solo cuando el commit contiene `[stellar-smoke]` o por ejecución manual.
 
-Este smoke test mide una muestra pequeña del adaptador contra Testnet, no el límite máximo de la red. La aceptación del flujo completo con un PDF requiere ejecutar el Compose con una cuenta Testnet configurada y conservar el transaction hash resultante como evidencia.
+Este smoke test mide una muestra pequeña del adaptador contra Testnet, no el límite máximo de la red. El recorrido completo con PDF ya está cubierto por el workflow API→Outbox→Testnet descrito abajo.
+
+## Smoke test API→Outbox→Testnet
+
+El workflow [Stellar Testnet API end-to-end](../../.github/workflows/stellar-testnet-e2e.yml) levanta PostgreSQL, SeaweedFS y la API en Compose, crea una cuenta efímera financiada por Friendbot y prueba crear contrato → cargar y corregir dos PDFs sintéticos → revisar → declarar ambas firmas → esperar el Outbox → verificar hashes en Stellar → emitir URL autorizada → descargar y volver a calcular SHA-256. Run `45045085597` completó el recorrido, verificó ambas anclas y la descarga, y obtuvo métricas del Dashboard de 1 contrato, 2 firmas, promedio 2,00 firmas por contrato y 0 anclajes pendientes. La semilla solo existe en el runner efímero y se enmascara; no se guarda en Git ni se envían datos personales a la red.
+
+El workflow se inicia manualmente o con un push a `feat/stellar-hackathon-mvp` cuyo mensaje incluya `[stellar-e2e]`. Cada ejecución crea un stack y credenciales efímeros, y elimina sus volúmenes al finalizar. Las transacciones y el resultado de verificación se conservan en los logs de Actions; el estado del dashboard se comprueba con una base vacía de ese job.
 
 ## Limitaciones de la demo
 
 - La acción de firmar registra una declaración del firmante; no es una firma criptográfica cualificada ni una validación de identidad.
 - La comparación muestra metadatos y cambio de SHA-256; no calcula diferencias visuales entre páginas PDF.
-- Compose, almacenamiento real, descarga autorizada integrada, transacción del flujo con PDF y prueba de carga deben validarse con los servicios en ejecución antes de declararse aceptados.
+- El recorrido API completo y la carga están verificados en runners efímeros de GitHub Actions; la interfaz React está conectada y pasa build, pero no se hizo una sesión manual del flujo en un navegador real en este entorno.
 
