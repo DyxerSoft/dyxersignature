@@ -61,7 +61,10 @@ export function ContractWorkbench() {
   const [digitizationJob, setDigitizationJob] = useState<DigitizationJobDetail | null>(null);
   const [activeTab, setActiveTab] = useState<"ocr" | "pdf">("ocr");
 
-  // Visualizador y Zoom states
+  // Modales y Visores
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [showSearchModal, setShowSearchModal] = useState(false);
+  const [searchContractId, setSearchContractId] = useState("");
   const [selectedSignatureForZoom, setSelectedSignatureForZoom] = useState<DetectedSignature | null>(null);
   const [viewerDocUrl, setViewerDocUrl] = useState<string | null>(null);
   const [viewerDocTitle, setViewerDocTitle] = useState<string | null>(null);
@@ -86,33 +89,72 @@ export function ContractWorkbench() {
   }, [contractId]);
 
   useEffect(() => {
-    if (!selectedSignatureForZoom) return;
-
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        setSelectedSignatureForZoom(null);
+        if (selectedSignatureForZoom) {
+          setSelectedSignatureForZoom(null);
+        } else if (showResetConfirm) {
+          setShowResetConfirm(false);
+        } else if (showSearchModal) {
+          setShowSearchModal(false);
+        } else if (viewerDocUrl) {
+          setViewerDocUrl(null);
+        }
       }
     };
 
+    const hasOpenModal = Boolean(selectedSignatureForZoom || showResetConfirm || showSearchModal);
     const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    window.addEventListener("keydown", handleKeyDown);
+    if (hasOpenModal) {
+      document.body.style.overflow = "hidden";
+    }
 
+    window.addEventListener("keydown", handleKeyDown);
     return () => {
-      document.body.style.overflow = previousOverflow;
+      if (hasOpenModal) {
+        document.body.style.overflow = previousOverflow;
+      }
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [selectedSignatureForZoom]);
+  }, [selectedSignatureForZoom, showResetConfirm, showSearchModal, viewerDocUrl]);
 
-  useEffect(() => {
-    const handleGlobalEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !selectedSignatureForZoom && viewerDocUrl) {
-        setViewerDocUrl(null);
-      }
-    };
-    window.addEventListener("keydown", handleGlobalEscape);
-    return () => window.removeEventListener("keydown", handleGlobalEscape);
-  }, [selectedSignatureForZoom, viewerDocUrl]);
+  function handleResetWorkbench() {
+    setContractId("");
+    setContract(null);
+    setDigitizationJob(null);
+    setViewerDocUrl(null);
+    setViewerDocTitle(null);
+    setSelectedSignatureForZoom(null);
+    setFile(null);
+    setScanFile(null);
+    setReason("");
+    setScanReason("");
+    setError("");
+    setBusinessReference("");
+    setShowResetConfirm(false);
+  }
+
+  async function handleLoadContract(event: FormEvent) {
+    event.preventDefault();
+    const targetId = searchContractId.trim();
+    if (!targetId) return;
+
+    setBusy(true);
+    setError("");
+    try {
+      const data = await getContract(targetId);
+      setContract(data);
+      setContractId(data.id);
+      setDigitizationJob(null);
+      setViewerDocUrl(null);
+      setShowSearchModal(false);
+      setSearchContractId("");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "No se encontró el contrato especificado con ese ID.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function handleCreate(event: FormEvent) {
     event.preventDefault();
@@ -180,25 +222,80 @@ export function ContractWorkbench() {
           <span className="eyebrow">DyxerSignature Hub</span>
           <h2 id="workbench-title">Módulo de Ingesta, OCR y Anclaje Blockchain</h2>
         </div>
-        {contract && <span className="status-pill">{contract.status}</span>}
+        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+          <button
+            type="button"
+            className="button-secondary"
+            onClick={() => setShowSearchModal(true)}
+            aria-label="Buscar contrato por ID"
+          >
+            Buscar por ID
+          </button>
+          {contract && (
+            <>
+              <button
+                type="button"
+                className="button-secondary"
+                onClick={() => setShowResetConfirm(true)}
+                aria-label="Cerrar y cambiar de contrato"
+              >
+                Cerrar contrato
+              </button>
+              <span className="status-pill">{contract.status}</span>
+            </>
+          )}
+        </div>
       </div>
 
-      <form className="form-row" onSubmit={handleCreate}>
-        <label>
-          Referencia de negocio
-          <input
-            value={businessReference}
-            onChange={(event) => setBusinessReference(event.target.value)}
-            onFocus={(event) => event.target.select()}
-            placeholder="Ej: GP-CONTRATO-001"
-            autoFocus
-            required
-          />
-        </label>
-        <button disabled={busy} type="submit">
-          {contractId ? "Crear nuevo contrato" : "Crear contrato"}
-        </button>
-      </form>
+      {!contractId ? (
+        <form className="form-row" onSubmit={handleCreate}>
+          <label>
+            Referencia de negocio
+            <input
+              value={businessReference}
+              onChange={(event) => setBusinessReference(event.target.value)}
+              onFocus={(event) => event.target.select()}
+              placeholder="Ej: GP-CONTRATO-001"
+              autoFocus
+              required
+            />
+          </label>
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <button disabled={busy} type="submit">
+              {busy ? "Creando..." : "Crear contrato"}
+            </button>
+            <button
+              type="button"
+              className="button-secondary"
+              onClick={() => setShowSearchModal(true)}
+            >
+              Cargar existente
+            </button>
+          </div>
+        </form>
+      ) : (
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: "0.85rem 1.25rem",
+          background: "#f1f5f9",
+          borderRadius: "var(--radius-sm)",
+          border: "1px solid var(--color-border)"
+        }}>
+          <div>
+            <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)", display: "block" }}>Contrato Activo:</span>
+            <strong style={{ fontSize: "1.05rem" }}>{contract?.businessReference ?? contractId}</strong>
+          </div>
+          <button
+            type="button"
+            className="button-secondary"
+            onClick={() => setShowResetConfirm(true)}
+          >
+            Cambiar contrato
+          </button>
+        </div>
+      )}
 
       <div style={{ marginTop: "1.5rem" }}>
         <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
@@ -549,6 +646,99 @@ export function ContractWorkbench() {
             ))}
           </div>
         </>
+      )}
+      {/* Modal de Confirmación para Cerrar / Cambiar Contrato */}
+      {showResetConfirm && (
+        <div className="lightbox-backdrop" onClick={() => setShowResetConfirm(false)}>
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="reset-dialog-title"
+            aria-describedby="reset-dialog-desc"
+            className="lightbox-content"
+            style={{ maxWidth: "480px" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="lightbox-header">
+              <h3 id="reset-dialog-title" style={{ margin: 0, fontSize: "1.1rem" }}>
+                ¿Cerrar espacio de trabajo actual?
+              </h3>
+            </div>
+            <p id="reset-dialog-desc" style={{ color: "var(--color-text-muted)", fontSize: "0.9rem", margin: "0.5rem 0" }}>
+              El contrato activo ({contract?.businessReference ?? "en curso"}) se desvinculará de la pantalla para permitir iniciar un nuevo documento o escanear otro contrato.
+            </p>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1rem" }}>
+              <button
+                type="button"
+                className="button-secondary"
+                onClick={() => setShowResetConfirm(false)}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="status-pill pill-danger"
+                style={{ cursor: "pointer", padding: "0.5rem 1rem", border: "1px solid var(--color-danger)" }}
+                onClick={handleResetWorkbench}
+              >
+                Cerrar contrato
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para Cargar Contrato Existente por ID */}
+      {showSearchModal && (
+        <div className="lightbox-backdrop" onClick={() => setShowSearchModal(false)}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="search-dialog-title"
+            className="lightbox-content"
+            style={{ maxWidth: "520px" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="lightbox-header">
+              <h3 id="search-dialog-title" style={{ margin: 0, fontSize: "1.1rem" }}>
+                Cargar contrato existente
+              </h3>
+              <button
+                type="button"
+                aria-label="Cerrar modal de búsqueda"
+                className="button-secondary"
+                style={{ padding: "0.25rem 0.5rem", minHeight: "28px" }}
+                onClick={() => setShowSearchModal(false)}
+              >
+                Cerrar
+              </button>
+            </div>
+            <form onSubmit={handleLoadContract} style={{ display: "flex", flexDirection: "column", gap: "1rem", marginTop: "0.5rem" }}>
+              <label style={{ fontSize: "0.85rem", fontWeight: 600 }}>
+                Identificador único de contrato (GUID):
+                <input
+                  value={searchContractId}
+                  onChange={(e) => setSearchContractId(e.target.value)}
+                  placeholder="Ej: 3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                  autoFocus
+                  required
+                />
+              </label>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
+                <button
+                  type="button"
+                  className="button-secondary"
+                  onClick={() => setShowSearchModal(false)}
+                >
+                  Cancelar
+                </button>
+                <button type="submit" disabled={busy || !searchContractId.trim()}>
+                  {busy ? "Buscando..." : "Cargar contrato"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </section>
   );
