@@ -16,6 +16,17 @@ Se guardan contratos por segundo, éxito/error, p95 de la iteración completa y 
 
 La carga no abre 100 transacciones Stellar ni simula confirmaciones. La capacidad observada del ledger se mide aparte con tres envíos secuenciales reales de Testnet, verificados por transaction hash. Esa muestra reporta latencia y transacciones verificadas por segundo, y no pretende saturar ni estimar el máximo de la red.
 
+## Resultado registrado
+
+- Workflow run `45042238308`, commit `5f2cea9db61fc53297ebae874ee2d7c6c9c081cb`, runner `ubuntu-24.04`.
+- 100 VUs durante 60 s; ventana medida de 60,31 s.
+- 10.486 recorridos completos, 0 fallidos; throughput completado de 173,873 flujos/s (un contrato por iteración).
+- p95 del recorrido completo: 840 ms; tasa de errores HTTP: 0; descarga S3: HTTP 200, sin fallos de etapa.
+- El gate mínimo de 7/s se cumplió en el runner. El artefacto `14761409098` (3.780 bytes, SHA-256 `c84aad24ab09b18ac6181202551c434767cf41692ca21cd5fb9ec7c45b387bfa`) conserva el resumen generado.
+- El flujo usó PDFs pequeños y sintéticos. No incluyó confirmaciones Stellar; la carga corresponde al runner efímero de Actions y no demuestra la capacidad del hardware de producción.
+
+El smoke API→Outbox→Testnet separado confirmó dos versiones consecutivas de un contrato, preservó la primera, verificó ambas transacciones y descargó la segunda: [run `45045085597`](https://github.com/DyxerSoft/dyxersignature/actions/runs/45045085597). En el mismo run el Dashboard informó 1 contrato, 2 firmas, 2,00 firmas por contrato y 0 anclajes pendientes. Sus transacciones sirven de prueba funcional, no como medición máxima de capacidad de Stellar.
+
 ## Límites
 
 La métrica de negocio cubre contrato → almacenamiento S3 → revisión → firma declarada → enqueue durable → verificación de bytes → descarga autorizada. Stellar no tiene credenciales en este workload, así que el hash del archivo se verifica mientras el anclaje está pendiente; la confirmación de Testnet se mide en el smoke acotado aparte. Los resultados de CI son capacidad del runner configurado y no sustituyen una prueba de carga en el hardware objetivo de despliegue.
