@@ -27,17 +27,19 @@ public sealed class DashboardController(AppDbContext db) : ControllerBase
             join contract in contracts on signature.ContractId equals contract.Id
             select signature.Id).CountAsync(cancellationToken);
 
+        var monthStartUtc = new DateTimeOffset(
+            DateTimeOffset.UtcNow.Year,
+            DateTimeOffset.UtcNow.Month,
+            1,
+            0,
+            0,
+            0,
+            TimeSpan.Zero);
+
         var signedThisMonth = await (
             from signature in db.SignatureEvents.AsNoTracking()
             join contract in contracts on signature.ContractId equals contract.Id
-            where signature.SignedAtUtc >= new DateTimeOffset(
-                DateTimeOffset.UtcNow.Year,
-                DateTimeOffset.UtcNow.Month,
-                1,
-                0,
-                0,
-                0,
-                TimeSpan.Zero)
+            where signature.SignedAtUtc >= monthStartUtc
             select signature.Id).CountAsync(cancellationToken);
 
         var statusCounts = await contracts

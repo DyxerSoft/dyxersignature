@@ -195,7 +195,14 @@ public sealed class BlockchainOutboxWorker(
                         x.Status == DocumentVersionStatus.Active)
                     .SingleOrDefaultAsync(cancellationToken);
 
-                previousActive?.Supersede();
+                if (previousActive is not null)
+                {
+                    previousActive.Supersede();
+                    // Release the filtered unique index before activating the replacement.
+                    // Both writes remain inside activationTransaction and commit atomically.
+                    await db.SaveChangesAsync(cancellationToken);
+                }
+
                 version.Activate();
                 contract.ActivateVersion(version.Id);
                 db.AuditEvents.Add(NewAudit(
@@ -278,3 +285,4 @@ public sealed class BlockchainOutboxWorker(
             JsonSerializer.Serialize(metadata),
             Guid.NewGuid());
 }
+
