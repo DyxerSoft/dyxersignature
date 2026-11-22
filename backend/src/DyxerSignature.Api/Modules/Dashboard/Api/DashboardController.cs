@@ -121,6 +121,21 @@ public sealed class DashboardController(AppDbContext db) : ControllerBase
             fivePlus = signatureFrequency.Count(count => count >= 5)
         };
 
+        // Only the latest persisted audit entries; no placeholder activity.
+        var recentActivity = await (
+            from audit in db.AuditEvents.AsNoTracking()
+            join contract in contracts on audit.ContractId equals contract.Id
+            orderby audit.OccurredAtUtc descending
+            select new
+            {
+                audit.ContractId,
+                contract.BusinessReference,
+                audit.EventType,
+                audit.OccurredAtUtc
+            })
+            .Take(8)
+            .ToListAsync(cancellationToken);
+
         return Ok(new
         {
             generatedAtUtc = DateTimeOffset.UtcNow,
@@ -135,6 +150,7 @@ public sealed class DashboardController(AppDbContext db) : ControllerBase
                     x => x.Count)
             },
             documents = new { versions = versionsCount },
+            recentActivity,
             signatures = new
             {
                 total = signatureCount,

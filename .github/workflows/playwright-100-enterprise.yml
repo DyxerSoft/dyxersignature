@@ -1,0 +1,85 @@
+name: Enterprise Playwright - 100 browsers and Dashboard integrity
+
+on:
+  pull_request:
+    paths:
+      - 'frontend/**'
+      - 'backend/src/DyxerSignature.Api/Modules/Dashboard/**'
+      - 'tests/browser/enterprise_100.py'
+      - 'tests/browser/business_ui_journey.py'
+      - '.github/workflows/playwright-100-enterprise.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mixed-browser-workload:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: /home/runner/.cache/ms-playwright
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install supported Chromium and Playwright
+        run: |
+          pip install --disable-pip-version-check playwright==1.56.0
+          python -m playwright install --with-deps chromium
+      - name: Generate private ephemeral storage and JWT credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          write_secret() {
+            printf '::add-mask::%s\n' "$2"
+            printf '%s=%s\n' "$1" "$2" >> "$GITHUB_ENV"
+          }
+          write_secret POSTGRES_PASSWORD "$(openssl rand -hex 32)"
+          write_secret AUTH_JWT_SIGNING_KEY "$(openssl rand -hex 32)"
+          write_secret S3_ADMIN_ACCESS_KEY "admin$(openssl rand -hex 8)"
+          write_secret S3_ADMIN_SECRET_KEY "$(openssl rand -hex 32)"
+          write_secret S3_ACCESS_KEY "api$(openssl rand -hex 8)"
+          write_secret S3_SECRET_KEY "$(openssl rand -hex 32)"
+          printf '%s\n' 'S3_PUBLIC_URL=http://127.0.0.1:8333' >> "$GITHUB_ENV"
+          printf '%s\n' 'STELLAR_PUBLIC_KEY=' >> "$GITHUB_ENV"
+          printf '%s\n' 'STELLAR_SECRET_SEED=' >> "$GITHUB_ENV"
+      - name: Start real API, PostgreSQL, S3, and Nginx/React
+        run: docker compose up -d --build frontend
+      - name: Wait for fully initialized API and frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 120); do
+            if curl -fsS http://127.0.0.1:8080/api/v1/health >/dev/null &&
+               curl -fsS http://127.0.0.1:3000/ >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose ps
+          exit 1
+      - name: 10,25,50-browser warmup + 100 concurrent mixed business workflows
+        env:
+          BROWSER_USERS: '100'
+        run: python -u tests/browser/enterprise_100.py
+      - name: Complete React UI forms journey and verify final Dashboard correlation
+        run: python -u tests/browser/business_ui_journey.py
+      - name: Upload correlation, latency and errors report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: enterprise-playwright-100-report
+          path: |
+            artifacts/playwright-enterprise-100.json
+            artifacts/juanjo-ui-journey.json
+            artifacts/juanjo-*.png
+          retention-days: 14
+          if-no-files-found: warn
+      - name: Show service status on failure
+        if: failure()
+        run: docker compose ps
+      - name: Destroy only this runner's ephemeral data
+        if: always()
+        run: docker compose down --volumes --remove-orphans

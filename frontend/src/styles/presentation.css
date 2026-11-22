@@ -1,0 +1,60 @@
+/* Comercial: componentes de actividad y salud blockchain sin posicionamiento absoluto. */
+.stellar-health-panel,.recent-panel { min-width:0; }
+.stellar-kpi-grid {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+  padding:18px 0 2px;
+}
+.stellar-kpi {
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  gap:6px;
+  min-height:88px;
+  padding:14px 16px;
+  background:#faf9ff;
+  border:1px solid #ece7fa;
+  border-radius:10px;
+}
+.stellar-kpi>span { color:#616a83; font-size:11px; font-weight:600; line-height:1.35; }
+.stellar-kpi>strong { color:#201d48; font:800 25px/1.2 Manrope, sans-serif; overflow-wrap:anywhere; }
+.activity-timeline { padding-top:12px; }
+.activity-event {
+  border:0;
+  width:100%;
+  background:transparent;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:12px 4px;
+  border-bottom:1px solid #edeef6;
+  text-align:left;
+  color:#262a44;
+}
+.activity-event:hover { background:#f8f7ff; }
+.activity-marker {
+  color:#6929dd;
+  background:#f1edff;
+  flex:none;
+  border-radius:9px;
+  padding:10px;
+}
+.activity-details { display:flex; flex:1; min-width:0; flex-direction:column; gap:3px; }
+.activity-details strong { font-size:12px; }
+.activity-details small { font-size:10px; color:#858ba0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.activity-event time { font-size:10px; color:#747b91; white-space:nowrap; }
+.empty-activity { margin:12px 0; padding:14px; border-radius:9px; background:#f9f9fc; color:#7c8198; font-size:12px; }
+.topbar-description { flex:1; color:#81879c; font-size:12px; }
+@media (max-width:900px) {
+  .stellar-kpi-grid {grid-template-columns:repeat(2,minmax(0,1fr));}
+  .activity-event time {font-size:9px;}
+}
+@media (max-width:580px) {
+  .stellar-kpi-grid {grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px;}
+  .stellar-kpi {padding:11px; min-height:74px;}
+  .stellar-kpi>strong {font-size:20px;}
+  .activity-event {gap:8px;}
+  .activity-event time {white-space:normal;max-width:100px;text-align:right;}
+  .topbar-description {display:none;}
+}

@@ -33,7 +33,7 @@ export async function uploadDocument(
   if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
     throw new Error("El MVP Stellar admite PDF; las plantillas Word requieren un endpoint aún no implementado.");
   }
-  const uniqueRef = "GP-DEMO-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
+  const uniqueRef = "IJ-DOC-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
   const contract = await createContract(uniqueRef, name);
   const version = await uploadDraftVersion(contract.id, file);
   return {

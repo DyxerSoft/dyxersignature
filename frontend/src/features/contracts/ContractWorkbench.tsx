@@ -4,7 +4,7 @@ import type { ContractDetail } from "./types";
 import type { TemplateDocument } from "../documents/api";
 
 export function ContractWorkbench({ initialContractId = "", documents, onCreated }: { initialContractId?: string; documents: TemplateDocument[]; onCreated?: (id: string) => void }) {
-  const [businessReference, setBusinessReference] = useState("GP-TEST-0001");
+  const [businessReference, setBusinessReference] = useState(() => "IJ-RES-" + Date.now().toString(36).toUpperCase());
   const [baseDocumentId,setBaseDocumentId]=useState("");
   const [contractId, setContractId] = useState(initialContractId);
   const [contract, setContract] = useState<ContractDetail | null>(null);
