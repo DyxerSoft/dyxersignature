@@ -81,6 +81,12 @@ jobs:
           dashboard = call("GET", "/dashboard", token)
           assert {"contracts", "documents", "signatures", "blockchain"}.issubset(dashboard)
           assert {"averagePerContract", "frequency"}.issubset(dashboard["signatures"])
+          expected_stellar_keys = {"pending", "confirmed", "failed", "retrying", "confirmedLastHour", "oldestPendingSeconds"}
+          assert expected_stellar_keys.issubset(dashboard["blockchain"])
+          assert all(isinstance(dashboard["blockchain"][field], int) and dashboard["blockchain"][field] >= 0
+                     for field in expected_stellar_keys)
+          assert dashboard["blockchain"]["failed"] <= dashboard["blockchain"]["pending"]
+          assert dashboard["blockchain"]["retrying"] <= dashboard["blockchain"]["pending"]
           listing = call("GET", "/contracts?page=1&pageSize=25", token)
           assert isinstance(listing.get("items"), list) and isinstance(listing.get("total"), int)
           ref = "CI-PARITY-" + uuid.uuid4().hex[:12]

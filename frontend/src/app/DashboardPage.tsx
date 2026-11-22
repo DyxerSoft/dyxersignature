@@ -117,6 +117,40 @@ export function DashboardPage({ onNavigate }: { onNavigate: (page: string) => vo
         </button></div>
         <div style={{padding:"1.5rem"}}>Los eventos de auditoría se muestran desde el módulo Trazabilidad, sin registros de muestra.</div>
       </section>
+      <section className="panel recent-panel" aria-label="Indicadores operativos Stellar">
+        <div className="panel-heading"><div>
+          <span className="panel-icon"><Icon name="shield" size={20}/></span>
+          <div><h3>Salud del anclaje Stellar</h3>
+            <p>Estado operativo de confirmaciones, reintentos y cola desde PostgreSQL</p>
+          </div>
+        </div></div>
+        <div className="frequency-summary" style={{padding:"1.25rem",flexWrap:"wrap"}}>
+          <div><span>Confirmados en Testnet</span>
+            <strong>{metrics.blockchain.confirmed?.toLocaleString("es-BO") ?? "—"}</strong>
+          </div>
+          <div><span>En espera (incluye errores)</span>
+            <strong>{metrics.blockchain.pending.toLocaleString("es-BO")}</strong>
+          </div>
+          <div><span>Con fallo actual</span>
+            <strong>{metrics.blockchain.failed?.toLocaleString("es-BO") ?? "—"}</strong>
+          </div>
+          <div><span>Con reintentos</span>
+            <strong>{metrics.blockchain.retrying?.toLocaleString("es-BO") ?? "—"}</strong>
+          </div>
+          <div><span>Confirmados última hora</span>
+            <strong>{metrics.blockchain.confirmedLastHour?.toLocaleString("es-BO") ?? "—"}</strong>
+          </div>
+          <div><span>Espera más antigua</span>
+            <strong>{typeof metrics.blockchain.oldestPendingSeconds === "number"
+              ? (metrics.blockchain.oldestPendingSeconds / 60).toFixed(1) + " min" : "—"}</strong>
+          </div>
+        </div>
+        <p className="muted-copy" style={{padding:"0 1.25rem 1.25rem"}}>
+          Confirmar un hash en Stellar es asíncrono: 100 usuarios de la API no equivalen
+          a 100 transacciones confirmadas por segundo. Los indicadores ausentes muestran «—»
+          hasta que se despliegue la ampliación del backend.
+        </p>
+      </section>
     </>}
     <PageFooter/>
   </div>;

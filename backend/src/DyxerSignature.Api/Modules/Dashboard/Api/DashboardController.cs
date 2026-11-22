@@ -47,13 +47,45 @@ public sealed class DashboardController(AppDbContext db) : ControllerBase
             .Select(group => new { Status = group.Key, Count = group.Count() })
             .ToListAsync(cancellationToken);
 
-        var pendingAnchors = await (
+        // Aggregate statuses in PostgreSQL; do not load all anchors into memory.
+        var anchorsForVisibleContracts =
             from anchor in db.BlockchainAnchors.AsNoTracking()
             join version in db.ContractDocumentVersions.AsNoTracking()
                 on anchor.DocumentVersionId equals version.Id
             join contract in contracts on version.ContractId equals contract.Id
-            where anchor.Status != BlockchainAnchorStatus.Confirmed
-            select anchor.Id).CountAsync(cancellationToken);
+            select anchor;
+
+        var statusByAnchor = await anchorsForVisibleContracts
+            .GroupBy(anchor => anchor.Status)
+            .Select(group => new { Status = group.Key, Count = group.Count() })
+            .ToListAsync(cancellationToken);
+        var confirmedAnchors = statusByAnchor
+            .Where(group => group.Status == BlockchainAnchorStatus.Confirmed)
+            .Sum(group => group.Count);
+        var failedAnchors = statusByAnchor
+            .Where(group => group.Status == BlockchainAnchorStatus.Failed)
+            .Sum(group => group.Count);
+        var pendingAnchors = statusByAnchor
+            .Where(group => group.Status != BlockchainAnchorStatus.Confirmed)
+            .Sum(group => group.Count);
+        var retryingAnchors = await anchorsForVisibleContracts
+            .CountAsync(anchor =>
+                anchor.Status != BlockchainAnchorStatus.Confirmed && anchor.RetryCount > 0,
+                cancellationToken);
+        var oneHourAgo = DateTimeOffset.UtcNow.AddHours(-1);
+        var confirmedLastHour = await anchorsForVisibleContracts
+            .CountAsync(anchor =>
+                anchor.Status == BlockchainAnchorStatus.Confirmed &&
+                anchor.ConfirmedAtUtc >= oneHourAgo,
+                cancellationToken);
+        var oldestUnconfirmedAtUtc = await anchorsForVisibleContracts
+            .Where(anchor => anchor.Status != BlockchainAnchorStatus.Confirmed)
+            .OrderBy(anchor => anchor.CreatedAtUtc)
+            .Select(anchor => (DateTimeOffset?)anchor.CreatedAtUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+        var oldestPendingSeconds = oldestUnconfirmedAtUtc is null
+            ? 0L
+            : Math.Max(0L, (long)(DateTimeOffset.UtcNow - oldestUnconfirmedAtUtc.Value).TotalSeconds);
 
         var signatureIntervals = await (
             from signature in db.SignatureEvents.AsNoTracking()
@@ -113,7 +145,15 @@ public sealed class DashboardController(AppDbContext db) : ControllerBase
                 averageHoursToFirstSignature = averageSignatureHours,
                 frequency
             },
-            blockchain = new { pending = pendingAnchors }
+            blockchain = new
+            {
+                pending = pendingAnchors,
+                confirmed = confirmedAnchors,
+                failed = failedAnchors,
+                retrying = retryingAnchors,
+                confirmedLastHour,
+                oldestPendingSeconds
+            }
         });
     }
 }
