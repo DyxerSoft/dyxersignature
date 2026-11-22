@@ -11,6 +11,7 @@
 # Runtime data
 .data/
 backend/.data/
+artifacts/
 
 # Env / secrets
 .env
@@ -36,3 +37,4 @@ Thumbs.db
 backend/blockchain/cache/
 backend/blockchain/out/
 backend/blockchain/broadcast/
+

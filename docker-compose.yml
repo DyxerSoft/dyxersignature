@@ -34,7 +34,7 @@ services:
       - dyxersignature_seaweedfs:/data
 
   s3-init:
-    image: amazon/aws-cli:2
+    image: amazon/aws-cli:2.42.1
     entrypoint: ["/bin/sh", "-ec"]
     command:
       - |
