@@ -23,6 +23,9 @@ export function DashboardPage({ onNavigate }: { onNavigate: (page: string) => vo
     ["Firmas completadas", String(metrics.signatures.total), "pen", "green", metrics.signatures.thisMonth + " este mes"],
     ["Anclajes pendientes", String(metrics.blockchain.pending), "clock", "amber", "Stellar Testnet"]
   ] : [];
+  const monthlySignatures = metrics?.signatures.monthly ?? [];
+  const monthlySignatureMaximum = Math.max(1, ...monthlySignatures.map(row => row.count));
+  const sixMonthSignatureTotal = monthlySignatures.reduce((total, row) => total + row.count, 0);
   const byStatus = Object.entries(metrics?.contracts.byStatus ?? {});
   const maxStatus = Math.max(1, ...byStatus.map(([, n]) => n));
   const frequency = metrics?.signatures.frequency;
@@ -53,14 +56,31 @@ export function DashboardPage({ onNavigate }: { onNavigate: (page: string) => vo
       <section className="analytics-grid">
         <article className="panel activity-panel">
           <div className="panel-heading"><div><span className="panel-icon"><Icon name="chart" size={19}/></span>
-            <div><h3>Actividad de firmas</h3><p>Indicadores acumulados y del mes actual</p></div>
+            <div><h3>Actividad de firmas</h3><p>Firmas registradas durante los últimos seis meses</p></div>
           </div></div>
-          <div className="frequency-summary" style={{ padding: "1rem 1.5rem" }}>
-            <div><span>Firmas este mes</span><strong>{metrics.signatures.thisMonth}</strong></div>
-            <div><span>Firmas registradas</span><strong>{metrics.signatures.total}</strong></div>
-            <div><span>Horas hasta primera firma (promedio)</span><strong>{metrics.signatures.averageHoursToFirstSignature.toFixed(2)} h</strong></div>
+          <div className="signature-chart" role="img"
+            aria-label={`Firmas por mes: ${monthlySignatures.map(row => `${row.month}: ${row.count}`).join(", ")}`}>
+            {monthlySignatures.length === 0
+              ? <div className="signature-chart-unavailable">Histórico mensual no disponible.</div>
+              : <div className="signature-chart-grid">
+                  {monthlySignatures.map(row => <div className="signature-chart-month" key={row.month}>
+                    <strong>{row.count}</strong>
+                    <div className="signature-chart-track">
+                      <div className="signature-chart-bar"
+                        style={{height: `${row.count / monthlySignatureMaximum * 100}%`}} />
+                    </div>
+                    <span>{monthLabel(row.month)}</span>
+                  </div>)}
+                </div>
+            }
           </div>
-          <p style={{ padding: "0 1.5rem" }}>Consulta el estado de los contratos y el historial de cada firma.</p>
+          <div className="signature-metric-strip" aria-label="Resumen de firmas">
+            <div><span>Firmas del mes</span><strong>{metrics.signatures.thisMonth}</strong></div>
+            <div><span>Últimos 6 meses</span><strong>{monthlySignatures.length ? sixMonthSignatureTotal : "—"}</strong></div>
+            <div><span>Tiempo medio a primera firma</span>
+              <strong>{metrics.signatures.total === 0 ? "—" : `${metrics.signatures.averageHoursToFirstSignature.toFixed(2)} h`}</strong>
+            </div>
+          </div>
         </article>
         <article className="panel contracts-panel">
           <div className="panel-heading"><div><span className="panel-icon"><Icon name="contract" size={20}/></span>
@@ -163,6 +183,12 @@ export function PageFooter() {
     <span>© 2026 {presentation.product} · {presentation.provider}</span>
     <span><Icon name="shield" size={14}/> Evidencia SHA-256 y Stellar Testnet</span>
   </footer>;
+}
+
+function monthLabel(isoMonth: string) {
+  const [year, month] = isoMonth.split("-").map(Number);
+  return new Intl.DateTimeFormat("es-BO", {month: "short", timeZone: "UTC"})
+    .format(new Date(Date.UTC(year, month - 1, 1)));
 }
 
 function numberOrDash(value: number | undefined) {
