@@ -6,6 +6,7 @@ const contractsCompleted = new Counter('contracts_completed');
 const contractWorkflowErrors = new Counter('contract_workflow_errors');
 const contractWorkflowDuration = new Trend('contract_workflow_duration', true);
 const downloadHttpStatus = new Trend('download_http_status');
+const downloadErrorCode = new Trend('download_error_code');
 const failedAt = {
   create: new Counter('workflow_failed_create'),
   upload: new Counter('workflow_failed_upload'),
@@ -164,6 +165,10 @@ export default function (data) {
 
   const downloaded = http.get(downloadUrl, { tags: { endpoint: 'download_pdf' } });
   downloadHttpStatus.add(downloaded.status);
+  downloadErrorCode.add(downloaded.error_code || 0);
+  if (__VU === 1 && __ITER === 0) {
+    console.log(`Download diagnostic: HTTP status ${downloaded.status}, k6 error code ${downloaded.error_code || 0}.`);
+  }
   const pdfDownloaded = check(downloaded, {
     'private PDF downloaded from presigned URL': (result) =>
       result.status === 200 && result.body.startsWith('%PDF-'),
@@ -193,6 +198,11 @@ export function handleSummary(data) {
       .filter(([name]) => name.startsWith('download_http_status'))
       .map(([name, metric]) => [name, metric.values]),
   );
+  const downloadErrorCodeSeries = Object.fromEntries(
+    Object.entries(data.metrics)
+      .filter(([name]) => name.startsWith('download_error_code'))
+      .map(([name, metric]) => [name, metric.values]),
+  );
   const stageFailures = Object.fromEntries(
     Object.entries(failedAt).map(([stage, metric]) => [
       stage,
@@ -214,6 +224,7 @@ export function handleSummary(data) {
       p95: Number((data.metrics.download_http_status?.values['p(95)'] || 0).toFixed(2)),
     },
     downloadHttpStatusSeries: downloadStatusSeries,
+    downloadErrorCodeSeries,
     stageFailures,
     checks,
     targetBandContractsPerSecond: '7-10',
