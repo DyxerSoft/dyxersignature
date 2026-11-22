@@ -1,0 +1,106 @@
+name: MVP frontend/API contract
+
+on:
+  pull_request:
+    paths:
+      - "frontend/**"
+      - "backend/**"
+      - "docker-compose.yml"
+      - ".github/workflows/mvp-frontend-api-contract.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  api-contract-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate masked ephemeral Docker credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          write_secret() {
+            printf '::add-mask::%s\n' "$2"
+            printf '%s=%s\n' "$1" "$2" >> "$GITHUB_ENV"
+          }
+          write_secret POSTGRES_PASSWORD "$(openssl rand -hex 32)"
+          write_secret AUTH_JWT_SIGNING_KEY "$(openssl rand -hex 32)"
+          write_secret S3_ADMIN_ACCESS_KEY "admin$(openssl rand -hex 8)"
+          write_secret S3_ADMIN_SECRET_KEY "$(openssl rand -hex 32)"
+          write_secret S3_ACCESS_KEY "api$(openssl rand -hex 8)"
+          write_secret S3_SECRET_KEY "$(openssl rand -hex 32)"
+          echo 'S3_PUBLIC_URL=http://localhost:8333' >> "$GITHUB_ENV"
+
+      - name: Start real API, PostgreSQL, S3 and frontend
+        run: docker compose up --build --detach frontend
+
+      - name: Check frontend, API, JWT and all read modules against persisted data
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 90); do
+            if curl -fsS http://127.0.0.1:8080/api/v1/health >/dev/null &&
+               curl -fsS http://127.0.0.1:3000/ >/dev/null; then
+              break
+            fi
+            if [ "$attempt" = 90 ]; then
+              docker compose logs --no-color api frontend postgres seaweedfs | tail -n 120
+              exit 1
+            fi
+            sleep 2
+          done
+          python3 - <<'PY'
+          import json
+          import urllib.request
+          import urllib.error
+          import uuid
+
+          base = "http://127.0.0.1:3000/api/v1"
+          def call(method, path, token=None, body=None):
+              headers = {"Accept": "application/json"}
+              if token:
+                  headers["Authorization"] = "Bearer " + token
+              if body is not None:
+                  headers["Content-Type"] = "application/json"
+              req = urllib.request.Request(
+                  base + path,
+                  headers=headers,
+                  data=json.dumps(body).encode() if body is not None else (b"" if method == "POST" else None),
+                  method=method
+              )
+              with urllib.request.urlopen(req, timeout=12) as response:
+                  return json.load(response)
+
+          # Frontend initializes this automatically; no JWT entry or login screen.
+          auth = call("POST", "/auth/dev-token")
+          token = auth["accessToken"]
+          assert token, "no JWT returned"
+          dashboard = call("GET", "/dashboard", token)
+          assert {"contracts", "documents", "signatures", "blockchain"}.issubset(dashboard)
+          assert {"averagePerContract", "frequency"}.issubset(dashboard["signatures"])
+          listing = call("GET", "/contracts?page=1&pageSize=25", token)
+          assert isinstance(listing.get("items"), list) and isinstance(listing.get("total"), int)
+          ref = "CI-PARITY-" + uuid.uuid4().hex[:12]
+          created = call("POST", "/contracts", token, {"businessReference": ref, "title": "Contrato CI API"})
+          contract_id = created["id"]
+          detail = call("GET", "/contracts/" + contract_id, token)
+          assert detail["businessReference"] == ref and isinstance(detail["versions"], list)
+          signed = call("GET", "/contracts/" + contract_id + "/signatures", token)
+          assert isinstance(signed["signers"], list)
+          audit = call("GET", "/contracts/" + contract_id + "/audit?page=1&pageSize=50", token)
+          assert isinstance(audit["items"], list)
+          listing_after = call("GET", "/contracts?page=1&pageSize=25", token)
+          assert any(i["id"] == contract_id for i in listing_after["items"])
+          print("PASS frontend nginx proxy -> JWT dev session -> dashboard/frequency -> contracts/list/detail/create -> signatures -> audit")
+          PY
+
+      - name: Diagnose on failure without dumping credentials
+        if: failure()
+        run: docker compose ps
+
+      - name: Tear down ephemeral services and volumes
+        if: always()
+        run: docker compose down --volumes --remove-orphans
