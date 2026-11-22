@@ -188,6 +188,11 @@ export function handleSummary(data) {
   const p95 = data.metrics.contract_workflow_duration?.values['p(95)'] || 0;
   const throughput = data.metrics.contracts_completed?.values.rate || 0;
   const requestErrorRate = data.metrics.http_req_failed?.values.rate || 0;
+  const downloadStatusSeries = Object.fromEntries(
+    Object.entries(data.metrics)
+      .filter(([name]) => name.startsWith('download_http_status'))
+      .map(([name, metric]) => [name, metric.values]),
+  );
   const stageFailures = Object.fromEntries(
     Object.entries(failedAt).map(([stage, metric]) => [
       stage,
@@ -208,6 +213,7 @@ export function handleSummary(data) {
       average: Number((data.metrics.download_http_status?.values.avg || 0).toFixed(2)),
       p95: Number((data.metrics.download_http_status?.values['p(95)'] || 0).toFixed(2)),
     },
+    downloadHttpStatusSeries: downloadStatusSeries,
     stageFailures,
     checks,
     targetBandContractsPerSecond: '7-10',
