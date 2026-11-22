@@ -89,8 +89,15 @@ public sealed class S3DocumentStorage : IDocumentStorage, IDisposable
             Expires = DateTime.UtcNow.AddMinutes(
                 Math.Clamp(_options.PresignedUrlExpirationMinutes, 1, 15))
         });
+        var endpoint = new Uri(_options.PublicServiceUrl, UriKind.Absolute);
+        // SigV4 signs the host, path and query, not the URI scheme; preserve the configured S3 endpoint scheme.
+        var configuredUrl = new UriBuilder(url)
+        {
+            Scheme = endpoint.Scheme,
+            Port = endpoint.IsDefaultPort ? -1 : endpoint.Port
+        }.Uri;
 
-        return Task.FromResult(url);
+        return Task.FromResult(configuredUrl.ToString());
     }
 
     public void Dispose()
@@ -104,7 +111,6 @@ public sealed class S3DocumentStorage : IDocumentStorage, IDisposable
         var config = new AmazonS3Config
         {
             ServiceURL = serviceUrl,
-            UseHttp = serviceUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase),
             ForcePathStyle = true,
             AuthenticationRegion = _options.Region
         };
