@@ -8,7 +8,7 @@ La revisión y la firma son pasos explícitos. La aplicación registra quién co
 
 ## Commit
 
-Se registrará en `feat/stellar-hackathon-mvp` después de validación y push; añadir aquí SHA y resultado CI. `main` no se modifica.
+`b5a61701b484c662a6a458ad8e1e6cab16de06cb` — `feat(business): add contract version review signing and audit APIs`. El commit está en `feat/stellar-hackathon-mvp`; `main` continúa en `f406c1a61dc871471f2cbd29f9d90d39aeb3d6f3`.
 
 ## Archivos principales
 
@@ -26,8 +26,9 @@ Se registrará en `feat/stellar-hackathon-mvp` después de validación y push; a
 - `python scripts/validar_requirement_loop.py --requirement MVP-001`: correcto; el despacho de análisis permanece `ANALYZING`.
 - `python scripts/probar_requirement_loop.py`: 20 correctas, 2 omitidas por límites de symlink/chmod en Windows.
 - JSON de `appsettings.json` y YAML de Compose: parsean correctamente.
-- .NET y Docker locales: no están instalados. `dotnet test`, `docker compose config` y runtime local no ejecutables; se esperará CI para build y pruebas .NET.
-- CI de esta fase: registrar los dos workflows y su resultado tras el push.
+- CI backend run `45031383678`: Restore correcto; Build falló por una variable contextual reservada (`group`) en la consulta de métricas del dashboard. Tests y Docker quedaron omitidos por el fallo de Build. Se corrigió en el siguiente commit de esta fase; la reejecución CI queda pendiente.
+- CI frontend run `45028594225`: correcto en la fase 1; fase 2 no cambió código frontend.
+- .NET y Docker locales no están instalados. `dotnet test`, `docker compose config` y runtime local no ejecutables; la reejecución de CI debe cerrar Build, pruebas .NET e imagen Docker.
 
 ## Bloqueos y límites
 

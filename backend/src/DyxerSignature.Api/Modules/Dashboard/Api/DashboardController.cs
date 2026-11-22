@@ -57,11 +57,11 @@ public sealed class DashboardController(AppDbContext db) : ControllerBase
             from signature in db.SignatureEvents.AsNoTracking()
             join contract in contracts on signature.ContractId equals contract.Id
             group signature by new { signature.ContractId, contract.CreatedAtUtc }
-            into group
+            into signatureGroup
             select new
             {
-                group.Key.CreatedAtUtc,
-                FirstSignatureAtUtc = group.Min(x => x.SignedAtUtc)
+                signatureGroup.Key.CreatedAtUtc,
+                FirstSignatureAtUtc = signatureGroup.Min(x => x.SignedAtUtc)
             }).ToListAsync(cancellationToken);
 
         var averageSignatureHours = signatureIntervals.Count == 0
