@@ -81,6 +81,14 @@ jobs:
           dashboard = call("GET", "/dashboard", token)
           assert {"contracts", "documents", "signatures", "blockchain"}.issubset(dashboard)
           assert {"averagePerContract", "frequency"}.issubset(dashboard["signatures"])
+          monthly = dashboard["signatures"]["monthly"]
+          assert len(monthly) == 6
+          assert all(isinstance(row["month"], str) and len(row["month"]) == 7
+                     and isinstance(row["count"], int) and row["count"] >= 0
+                     for row in monthly)
+          assert len({row["month"] for row in monthly}) == 6
+          assert sum(row["count"] for row in monthly) <= dashboard["signatures"]["total"]
+          assert monthly[-1]["count"] == dashboard["signatures"]["thisMonth"]
           expected_stellar_keys = {"pending", "confirmed", "failed", "retrying", "confirmedLastHour", "oldestPendingSeconds"}
           assert expected_stellar_keys.issubset(dashboard["blockchain"])
           assert all(isinstance(dashboard["blockchain"][field], int) and dashboard["blockchain"][field] >= 0
