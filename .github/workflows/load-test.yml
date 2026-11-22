@@ -83,12 +83,17 @@ jobs:
           mkdir -p artifacts
           api_container="$(docker compose ps -q api)"
           if [ -z "$api_container" ]; then
-            echo "API container is not running; cannot join its Compose network." >&2
+            echo "API container is not running; cannot identify its Compose network." >&2
             exit 1
           fi
-          docker run --rm --network "container:${api_container}" --user "$(id -u):$(id -g)" \
+          api_network="$(docker inspect --format '{{range $name, $_ := .NetworkSettings.Networks}}{{$name}}{{end}}' "$api_container")"
+          if [ -z "$api_network" ]; then
+            echo "Could not identify the API container's Compose network." >&2
+            exit 1
+          fi
+          docker run --rm --network "$api_network" --user "$(id -u):$(id -g)" \
             --workdir /artifacts \
-            -e BASE_URL=http://127.0.0.1:8080 \
+            -e BASE_URL=http://api:8080 \
             -e K6_VUS -e K6_DURATION \
             -v "$PWD/scripts/load:/scripts:ro" \
             -v "$PWD/artifacts:/artifacts" \
