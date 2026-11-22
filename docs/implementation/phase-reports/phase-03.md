@@ -25,13 +25,30 @@ La firma sigue siendo una declaración autenticada de un firmante que entrega un
 - Backend CI `45034897263`: Restore, Build, pruebas .NET y Docker image build pasaron.
 - No se imprimió ni versionó el seed de cuenta. El smoke creó y financió una cuenta efímera de Testnet.
 
+## Evidencia de integración añadida en el cierre
+
+El workflow API→Outbox→Testnet `45043650143` probó el worker con Compose, SeaweedFS y PostgreSQL en ejecución: creó un contrato, firmó dos versiones, preservó la anterior, verificó el PDF corregido y descargó 60 bytes con HTTP 200. Ambas anclas reales fueron verificadas por la API:
+
+- Versión 1, ledger `5868219`, transaction hash `f8249216d62916e4df3934da338e8879ab2e1b1658284d57be6a9f69a0ca70e4` ([Horizon](https://horizon-testnet.stellar.org/transactions/f8249216d62916e4df3934da338e8879ab2e1b1658284d57be6a9f69a0ca70e4)).
+- Versión 2, SHA-256 `56ce7ad25d2f680ef95fdb0d37162f9db6b13c96c4d55e8ebd0768ac60128a43`, ledger `5868220`, transaction hash `274c9625a1b39ab00bb0b5f2977405daba04f754336ef73b28af85f85c4b60fa` ([Horizon](https://horizon-testnet.stellar.org/transactions/274c9625a1b39ab00bb0b5f2977405daba04f754336ef73b28af85f85c4b60fa)).
+
+## Repetición final
+
+El run `45045085597`, sobre el commit `3714c8d01447b8338a1c824bfee114834f0d8ed2`, terminó correctamente después de dos correcciones de runtime:
+
+- Versiones 1 y 2 conservaron el historial; el Dashboard devolvió 1 contrato, 2 firmas, promedio de 2,00 firmas por contrato y 0 anclajes pendientes.
+- Versión 1: ledger `5868406`, hash `6073bafe7cf27c9c07fe4f6d12b6373d39d9c1b56154cec97a8cb18c299f1dda` ([Horizon](https://horizon-testnet.stellar.org/transactions/6073bafe7cf27c9c07fe4f6d12b6373d39d9c1b56154cec97a8cb18c299f1dda)).
+- Versión 2: SHA-256 `56ce7ad25d2f680ef95fdb0d37162f9db6b13c96c4d55e8ebd0768ac60128a43`, ledger `5868407`, hash `a0a1c93266bf475568a1e93460bfc69276036a1b9b5903e2d7374dacf3fb148c` ([Horizon](https://horizon-testnet.stellar.org/transactions/a0a1c93266bf475568a1e93460bfc69276036a1b9b5903e2d7374dacf3fb148c)).
+- Verificación API de Stellar y del objeto S3: `true`; descarga autorizada: HTTP 200, 60 bytes, SHA-256 coincidente.
+- Backend CI `45045085592`: Restore, Build, Tests y Docker image build correctos.
+
 ## Bloqueos y límites
 
-- La evidencia verifica el adapter directamente en Testnet, pero aún no demuestra el flujo completo PDF→API→SeaweedFS→Outbox→Stellar→descarga en un runtime Compose.
-- El valor único de esta muestra no mide capacidad ni throughput representativo de Stellar; se ejecutará una prueba externa acotada y secuencial en la fase 5.
+- Las fallas `45043765178`, `45044204534` y `45044832758` identificaron dos defectos: el orden de las actualizaciones frente al índice único parcial y la expresión LINQ no traducible de la métrica mensual. Los commits `ae82e99` y `3714c8d` los corrigieron; `45045085597` pasó end-to-end.
+- El smoke secuencial de tres transacciones `45037850998` midió 0,214 transacciones verificadas por segundo (14.040 ms total). Es una muestra acotada, no la capacidad máxima de Stellar.
 - La configuración de una cuenta de producto usa secretos externos. El smoke autónomo de CI emplea una cuenta temporal y no verifica una integración de identidad real.
 
 ## Siguiente fase
 
-Conectar el frontend existente a los endpoints y cerrar la guía de demostración; mantener el flujo runtime como gate pendiente hasta poder ejecutar Compose.
+Fase 3 cerrada con evidencia real de Testnet. La fase 5 registra por separado el rendimiento HTTP y la muestra limitada de capacidad Stellar.
 
