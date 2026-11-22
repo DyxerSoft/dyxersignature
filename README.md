@@ -37,6 +37,7 @@ El ledger recibe únicamente el SHA-256 del PDF definitivo. El archivo, los firm
 ## Documentación
 
 - [Plan y reportes por fase](docs/implementation/phase-plan.md)
+- [Cierre de fase 5: carga y Testnet end-to-end](docs/implementation/phase-reports/phase-05.md)
 - [Guía de demostración](docs/implementation/demo-guide.md)
 - [Flujo Stellar Testnet y smoke test](backend/blockchain/README.md)
 - [Prueba de carga reproducible](docs/implementation/load-test.md)
